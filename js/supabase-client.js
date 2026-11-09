@@ -258,6 +258,46 @@ const SupabaseClient = {
     }
   },
 
+  // Renombra un tipo de producto en todos los activos de Supabase
+  async renameProductType(oldType, newType) {
+    if (!this.isConfigured() || !oldType || !newType) return false;
+    try {
+      const { error } = await this.client
+        .from('activos')
+        .update({ tipo: newType.trim(), updated_at: new Date().toISOString() })
+        .eq('tipo', oldType);
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.error("Supabase: Error al renombrar producto:", err);
+      return false;
+    }
+  },
+
+  // Actualiza los campos comunes de todos los activos de un producto
+  async updateProductFields(productType, fields) {
+    if (!this.isConfigured() || !productType) return false;
+    try {
+      const updateData = { updated_at: new Date().toISOString() };
+      if (fields.newTipo) updateData.tipo = fields.newTipo.trim();
+      if (fields.marca !== undefined && fields.marca !== '') updateData.marca = fields.marca.trim();
+      if (fields.modelo !== undefined && fields.modelo !== '') updateData.modelo = fields.modelo.trim();
+      if (fields.estado !== undefined && fields.estado !== '') updateData.estado = fields.estado.trim();
+      if (fields.ubicacion !== undefined && fields.ubicacion !== '') updateData.ubicacion = fields.ubicacion.trim();
+      if (fields.notas !== undefined && fields.notas !== '') updateData.notas = fields.notas.trim();
+
+      const { error } = await this.client
+        .from('activos')
+        .update(updateData)
+        .eq('tipo', productType);
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.error("Supabase: Error al actualizar campos del producto:", err);
+      return false;
+    }
+  },
+
   // Suscripción Realtime por WebSockets (Postgres Changes)
   subscribeToRealtime(onActivosChange, onUbicacionesChange) {
     if (!this.isConfigured()) return;

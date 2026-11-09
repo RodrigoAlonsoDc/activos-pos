@@ -46,14 +46,38 @@ document.addEventListener('DOMContentLoaded', () => {
     locationDetailList: document.getElementById('location-detail-list'),
     btnBackLocations: document.getElementById('btn-back-locations'),
 
-    // Vista Paneles de Producto
+    // Vista Productos y Edición de Campos
     categoriesGridWrapper: document.getElementById('categories-grid-wrapper'),
     categoriesGrid: document.getElementById('categories-grid'),
+    btnOpenManageProducts: document.getElementById('btn-open-manage-products'),
     productDetailView: document.getElementById('product-detail-view'),
     productDetailTitle: document.getElementById('product-detail-title'),
     productDetailCount: document.getElementById('product-detail-count'),
+    btnEditCurrentProduct: document.getElementById('btn-edit-current-product'),
     productDetailList: document.getElementById('product-detail-list'),
     btnBackToCategories: document.getElementById('btn-back-categories'),
+
+    // Modal Gestión de Productos
+    modalManageProducts: document.getElementById('modal-manage-products'),
+    btnCloseManageProducts: document.getElementById('btn-close-manage-products'),
+    btnDoneManageProducts: document.getElementById('btn-done-manage-products'),
+    formAddProduct: document.getElementById('form-add-product'),
+    inputNewProductName: document.getElementById('input-new-product-name'),
+    productsManageList: document.getElementById('products-manage-list'),
+
+    // Modal Editar Campos del Producto
+    modalEditProductFields: document.getElementById('modal-edit-product-fields'),
+    formEditProductFields: document.getElementById('form-edit-product-fields'),
+    editProductModalTitle: document.getElementById('edit-product-modal-title'),
+    editProductOriginalType: document.getElementById('edit-product-original-type'),
+    inputEditProductType: document.getElementById('input-edit-product-type'),
+    inputEditProductMarca: document.getElementById('input-edit-product-marca'),
+    inputEditProductModelo: document.getElementById('input-edit-product-modelo'),
+    selectEditProductEstado: document.getElementById('select-edit-product-estado'),
+    selectEditProductUbicacion: document.getElementById('select-edit-product-ubicacion'),
+    inputEditProductNotas: document.getElementById('input-edit-product-notas'),
+    btnCloseEditProductFields: document.getElementById('btn-close-edit-product-fields'),
+    btnCancelEditProductFields: document.getElementById('btn-cancel-edit-product-fields'),
 
     // Vista Todos los Activos
     searchInput: document.getElementById('search-input'),
@@ -233,8 +257,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (locationNames.length === 0) {
       dom.locationsGrid.innerHTML = `
         <div class="empty-state">
-          <p>No hay cuadros de ubicación registrados.</p>
-          <button class="btn btn-primary" id="btn-empty-add-location">Crear Primer Cuadro</button>
+          <p>No hay ubicaciones registradas.</p>
+          <button class="btn btn-primary" id="btn-empty-add-location">Crear Primera Ubicación</button>
         </div>
       `;
       document.getElementById('btn-empty-add-location')?.addEventListener('click', openManageLocationsModal);
@@ -246,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const items = groups[locName];
       const operativos = items.filter(i => (i.estado || '').toLowerCase() === 'operativo').length;
 
-      // Resumen de tipos de productos dentro de este cuadro de ubicación
+      // Resumen de tipos de productos dentro de esta ubicación
       const productTypes = {};
       items.forEach(i => {
         const t = i.tipo || 'Activo';
@@ -262,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="location-card-header">
             <span class="location-count-badge">${items.length} ${items.length === 1 ? 'activo' : 'activos'}</span>
           </div>
-          <h3 class="location-title">Cuadro de ${locName}</h3>
+          <h3 class="location-title">${locName}</h3>
           <div class="location-assets-summary">
             ${summaryTags || '<span style="font-size:11px; color:var(--text-muted);">Sin activos asignados</span>'}
           </div>
@@ -279,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     dom.locationsGrid.innerHTML = html;
 
-    // Vincular clics en cuadros de ubicación
+    // Vincular clics en ubicaciones
     dom.locationsGrid.querySelectorAll('.location-card').forEach(card => {
       card.addEventListener('click', () => {
         const loc = card.getAttribute('data-location');
@@ -288,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Abre el panel detallado de una ubicación específica (ej. "Caja 1")
+  // Abre el panel detallado de una ubicación específica (ej. "PUNTO DE VENTA")
   function openLocationDetail(locationName) {
     state.selectedLocation = locationName;
 
@@ -297,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const allInLoc = Storage.getActivos().filter(a => getLocationGroup(a.ubicacion) === locationName);
 
-    dom.locationDetailTitle.textContent = `Cuadro: ${locationName}`;
+    dom.locationDetailTitle.textContent = locationName;
     dom.locationDetailCount.innerHTML = `
       <span><strong>${allInLoc.length}</strong> activos asignados a este punto</span>
       <button class="btn btn-sm btn-primary" style="margin-left:12px; padding:4px 10px; font-size:11px;" onclick="window.quickAddAssetForLocation('${locationName}')">
@@ -495,17 +519,18 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // ==========================================
-  // VISTA: PANELES POR PRODUCTO (Alternativa)
+  // VISTA: PRODUCTOS
   // ==========================================
   function renderCategoriesGrid() {
     const activos = Storage.getActivos();
-    // Agrupar activos por Tipo de Activo
+    const allTypes = Storage.getProductTypes ? Storage.getProductTypes() : Storage.getTipos();
+
+    // Agrupar activos por Producto
     const groups = {};
+    allTypes.forEach(t => { groups[t] = []; });
     activos.forEach(a => {
       const tipo = a.tipo || 'Sin Categoría';
-      if (!groups[tipo]) {
-        groups[tipo] = [];
-      }
+      if (!groups[tipo]) groups[tipo] = [];
       groups[tipo].push(a);
     });
 
@@ -514,8 +539,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (categoryNames.length === 0) {
       dom.categoriesGrid.innerHTML = `
         <div class="empty-state">
-          <p>No hay activos registrados en el sistema.</p>
-          <button class="btn btn-primary" onclick="window.navigateToTab('registro')">Registrar Activo</button>
+          <p>No hay productos registrados en el sistema.</p>
+          <button class="btn btn-primary" onclick="window.openManageProductsModal()">Crear Producto</button>
         </div>
       `;
       return;
@@ -523,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let html = '';
     categoryNames.forEach(name => {
-      const items = groups[name];
+      const items = groups[name] || [];
       const operativos = items.filter(i => (i.estado || '').toLowerCase() === 'operativo').length;
 
       html += `
@@ -531,13 +556,14 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="category-card-header">
             <span class="category-count">${items.length} ${items.length === 1 ? 'activo' : 'activos'}</span>
           </div>
-          <h3 class="category-title">Panel de ${name}s</h3>
+          <h3 class="category-title">${name}</h3>
           <div class="category-status-indicator">
             <span class="status-dot green"></span> ${operativos} operativos
             ${items.length - operativos > 0 ? `<span class="status-dot orange" style="margin-left:8px;"></span> ${items.length - operativos} en revisión` : ''}
           </div>
-          <div class="category-card-footer">
-            <span>Ver activos, ID y códigos →</span>
+          <div class="category-card-footer" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Ver activos →</span>
+            <span style="font-size:11px; text-decoration:underline; font-weight:700;" onclick="event.stopPropagation(); window.openEditProductFieldsModal('${name}')">Editar campos</span>
           </div>
         </div>
       `;
@@ -545,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     dom.categoriesGrid.innerHTML = html;
 
-    // Vincular clics en tarjetas de categoría
+    // Vincular clics en tarjetas de producto
     dom.categoriesGrid.querySelectorAll('.category-card').forEach(card => {
       card.addEventListener('click', () => {
         const cat = card.getAttribute('data-category');
@@ -554,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Abre el panel detallado de un producto específico (ej: "Teclados")
+  // Abre el detalle de un producto específico (ej: "Teclado")
   function openProductDetail(categoryName) {
     state.selectedCategory = categoryName;
     const activos = Storage.getActivos().filter(a => a.tipo === categoryName);
@@ -562,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.categoriesGridWrapper.style.display = 'none';
     dom.productDetailView.style.display = 'block';
 
-    dom.productDetailTitle.textContent = `Panel de ${categoryName}s`;
+    dom.productDetailTitle.textContent = categoryName;
     dom.productDetailCount.innerHTML = `
       <span>${activos.length} unidades registradas</span>
       <button class="btn btn-sm btn-primary" style="margin-left:12px; padding:4px 10px; font-size:11px;" onclick="window.quickAddAssetForCategory('${categoryName}')">
@@ -1358,7 +1384,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // GESTIÓN Y EDICIÓN DE CUADROS DE UBICACIÓN
+  // GESTIÓN Y EDICIÓN DE UBICACIONES
   // ==========================================
   function openManageLocationsModal() {
     renderManageLocationsList();
@@ -1375,7 +1401,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const activos = Storage.getActivos();
 
     if (list.length === 0) {
-      dom.locationsManageList.innerHTML = '<p style="font-size:12px; color:var(--text-muted); text-align:center; padding:12px;">No hay cuadros de ubicación registrados.</p>';
+      dom.locationsManageList.innerHTML = '<p style="font-size:12px; color:var(--text-muted); text-align:center; padding:12px;">No hay ubicaciones registradas.</p>';
       return;
     }
 
@@ -1405,7 +1431,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.locationsManageList.querySelectorAll('.btn-rename-loc').forEach(btn => {
       btn.addEventListener('click', () => {
         const oldName = btn.getAttribute('data-name');
-        const newName = prompt(`Renombrar cuadro "${oldName}":`, oldName);
+        const newName = prompt(`Renombrar ubicación "${oldName}":`, oldName);
         if (newName && newName.trim() && newName.trim() !== oldName) {
           const updatedCount = Storage.renameCuadroUbicacion(oldName, newName.trim());
           if (state.selectedLocation === oldName) {
@@ -1413,7 +1439,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           renderManageLocationsList();
           refreshUI();
-          alert(`Cuadro renombrado a "${newName.trim()}". ${updatedCount} activos actualizados en tiempo real.`);
+          alert(`Ubicación renombrada a "${newName.trim()}". ${updatedCount} activos actualizados en tiempo real.`);
         }
       });
     });
@@ -1424,8 +1450,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const locName = btn.getAttribute('data-name');
         const count = activos.filter(a => getLocationGroup(a.ubicacion) === locName).length;
         const confirmMsg = count > 0
-          ? `¿Eliminar el cuadro "${locName}"? Sus ${count} activos pasarán a "Sin Ubicación Asignada".`
-          : `¿Eliminar el cuadro "${locName}"?`;
+          ? `¿Eliminar la ubicación "${locName}"? Sus ${count} activos pasarán a "Sin Ubicación Asignada".`
+          : `¿Eliminar la ubicación "${locName}"?`;
         if (confirm(confirmMsg)) {
           Storage.deleteCuadroUbicacion(locName);
           if (state.selectedLocation === locName) {
@@ -1438,7 +1464,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Vincular eventos del modal de cuadros de ubicación
+  // Vincular eventos del modal de ubicaciones
   if (dom.btnOpenManageLocations) {
     dom.btnOpenManageLocations.addEventListener('click', openManageLocationsModal);
   }
@@ -1459,24 +1485,231 @@ document.addEventListener('DOMContentLoaded', () => {
         renderManageLocationsList();
         refreshUI();
       } else {
-        alert(`El cuadro "${name}" ya existe.`);
+        alert(`La ubicación "${name}" ya existe.`);
       }
     });
   }
 
-  // Botón para renombrar cuadro desde la vista de detalle
+  // Botón para renombrar ubicación desde la vista de detalle
   if (dom.btnEditCurrentLocation) {
     dom.btnEditCurrentLocation.addEventListener('click', () => {
       if (!state.selectedLocation) return;
       const oldName = state.selectedLocation;
-      const newName = prompt(`Renombrar el cuadro "${oldName}":`, oldName);
+      const newName = prompt(`Renombrar la ubicación "${oldName}":`, oldName);
       if (newName && newName.trim() && newName.trim() !== oldName) {
         const updatedCount = Storage.renameCuadroUbicacion(oldName, newName.trim());
         state.selectedLocation = newName.trim();
         openLocationDetail(newName.trim());
         refreshUI();
-        alert(`Cuadro renombrado a "${newName.trim()}". ${updatedCount} activos actualizados en tiempo real.`);
+        alert(`Ubicación renombrada a "${newName.trim()}". ${updatedCount} activos actualizados en tiempo real.`);
       }
+    });
+  }
+
+  // ==========================================
+  // GESTIÓN Y EDICIÓN DE PRODUCTOS Y CAMPOS
+  // ==========================================
+  function openManageProductsModal() {
+    renderManageProductsList();
+    if (dom.modalManageProducts) dom.modalManageProducts.style.display = 'flex';
+  }
+  window.openManageProductsModal = openManageProductsModal;
+
+  function closeManageProductsModal() {
+    if (dom.modalManageProducts) dom.modalManageProducts.style.display = 'none';
+  }
+
+  function renderManageProductsList() {
+    if (!dom.productsManageList) return;
+    const tipos = Storage.getProductTypes ? Storage.getProductTypes() : Storage.getTipos();
+    const activos = Storage.getActivos();
+
+    if (tipos.length === 0) {
+      dom.productsManageList.innerHTML = '<p style="font-size:12px; color:var(--text-muted); text-align:center; padding:12px;">No hay productos registrados.</p>';
+      return;
+    }
+
+    let html = '';
+    tipos.forEach(tipoName => {
+      const count = activos.filter(a => (a.tipo || '').toLowerCase() === tipoName.toLowerCase()).length;
+      html += `
+        <div class="location-manage-item">
+          <div class="location-manage-info">
+            <span class="location-manage-name">${tipoName}</span>
+            <span class="location-manage-count">${count} ${count === 1 ? 'unidad' : 'unidades'}</span>
+          </div>
+          <div class="location-manage-actions">
+            <button type="button" class="btn btn-xs btn-primary btn-edit-fields-prod" data-type="${tipoName}">
+              Editar Campos
+            </button>
+            <button type="button" class="btn btn-xs btn-outline btn-rename-prod" data-type="${tipoName}">
+              Renombrar
+            </button>
+            <button type="button" class="btn btn-xs btn-danger btn-delete-prod" data-type="${tipoName}">
+              Eliminar
+            </button>
+          </div>
+        </div>
+      `;
+    });
+    dom.productsManageList.innerHTML = html;
+
+    // Vincular botón Editar Campos
+    dom.productsManageList.querySelectorAll('.btn-edit-fields-prod').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const typeName = btn.getAttribute('data-type');
+        closeManageProductsModal();
+        openEditProductFieldsModal(typeName);
+      });
+    });
+
+    // Vincular botón Renombrar
+    dom.productsManageList.querySelectorAll('.btn-rename-prod').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const oldType = btn.getAttribute('data-type');
+        const newType = prompt(`Renombrar producto "${oldType}":`, oldType);
+        if (newType && newType.trim() && newType.trim() !== oldType) {
+          const count = Storage.renameProductType(oldType, newType.trim());
+          if (state.selectedCategory === oldType) {
+            state.selectedCategory = newType.trim();
+          }
+          renderManageProductsList();
+          refreshUI();
+          alert(`Producto renombrado a "${newType.trim()}". ${count} activos actualizados en tiempo real.`);
+        }
+      });
+    });
+
+    // Vincular botón Eliminar
+    dom.productsManageList.querySelectorAll('.btn-delete-prod').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const typeName = btn.getAttribute('data-type');
+        const count = activos.filter(a => (a.tipo || '').toLowerCase() === typeName.toLowerCase()).length;
+        const confirmMsg = count > 0
+          ? `¿Eliminar la categoría "${typeName}"? Sus ${count} activos pasarán a "General".`
+          : `¿Eliminar el producto "${typeName}"?`;
+        if (confirm(confirmMsg)) {
+          Storage.deleteProductType(typeName);
+          if (state.selectedCategory === typeName) {
+            state.selectedCategory = null;
+          }
+          renderManageProductsList();
+          refreshUI();
+        }
+      });
+    });
+  }
+
+  // Vincular eventos del modal de productos
+  if (dom.btnOpenManageProducts) {
+    dom.btnOpenManageProducts.addEventListener('click', openManageProductsModal);
+  }
+  if (dom.btnCloseManageProducts) {
+    dom.btnCloseManageProducts.addEventListener('click', closeManageProductsModal);
+  }
+  if (dom.btnDoneManageProducts) {
+    dom.btnDoneManageProducts.addEventListener('click', closeManageProductsModal);
+  }
+  if (dom.formAddProduct) {
+    dom.formAddProduct.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = dom.inputNewProductName.value.trim();
+      if (!name) return;
+      const added = Storage.addProductType(name);
+      if (added) {
+        dom.inputNewProductName.value = '';
+        renderManageProductsList();
+        refreshUI();
+      } else {
+        alert(`El producto "${name}" ya existe.`);
+      }
+    });
+  }
+
+  // ==========================================
+  // PANEL / MODAL PARA EDITAR CAMPOS DEL PRODUCTO
+  // ==========================================
+  function openEditProductFieldsModal(productType) {
+    if (!productType) return;
+    const activos = Storage.getActivos().filter(a => (a.tipo || '').toLowerCase() === productType.toLowerCase());
+
+    dom.editProductOriginalType.value = productType;
+    dom.editProductModalTitle.textContent = productType;
+    dom.inputEditProductType.value = productType;
+
+    // Precargar con los valores comunes si existen
+    const sample = activos[0] || {};
+    dom.inputEditProductMarca.value = sample.marca || '';
+    dom.inputEditProductModelo.value = sample.modelo || '';
+    dom.selectEditProductEstado.value = sample.estado || '';
+    dom.inputEditProductNotas.value = sample.notas || '';
+
+    // Llenar selector de ubicaciones disponibles
+    const ubicaciones = Storage.getCuadrosUbicacion ? Storage.getCuadrosUbicacion() : [];
+    let locOptions = '<option value="">(Sin cambiar)</option>';
+    ubicaciones.forEach(loc => {
+      const selected = (sample.ubicacion && sample.ubicacion.startsWith(loc)) ? 'selected' : '';
+      locOptions += `<option value="${loc}" ${selected}>${loc}</option>`;
+    });
+    dom.selectEditProductUbicacion.innerHTML = locOptions;
+
+    if (dom.modalEditProductFields) dom.modalEditProductFields.style.display = 'flex';
+  }
+  window.openEditProductFieldsModal = openEditProductFieldsModal;
+
+  function closeEditProductFieldsModal() {
+    if (dom.modalEditProductFields) dom.modalEditProductFields.style.display = 'none';
+  }
+
+  if (dom.btnCloseEditProductFields) {
+    dom.btnCloseEditProductFields.addEventListener('click', closeEditProductFieldsModal);
+  }
+  if (dom.btnCancelEditProductFields) {
+    dom.btnCancelEditProductFields.addEventListener('click', closeEditProductFieldsModal);
+  }
+
+  // Botón desde la vista de detalle del producto
+  if (dom.btnEditCurrentProduct) {
+    dom.btnEditCurrentProduct.addEventListener('click', () => {
+      if (state.selectedCategory) {
+        openEditProductFieldsModal(state.selectedCategory);
+      }
+    });
+  }
+
+  // Guardar campos del producto
+  if (dom.formEditProductFields) {
+    dom.formEditProductFields.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const originalType = dom.editProductOriginalType.value;
+      const newTipo = dom.inputEditProductType.value.trim();
+      const marca = dom.inputEditProductMarca.value.trim();
+      const modelo = dom.inputEditProductModelo.value.trim();
+      const estado = dom.selectEditProductEstado.value;
+      const ubicacion = dom.selectEditProductUbicacion.value;
+      const notas = dom.inputEditProductNotas.value.trim();
+
+      if (!newTipo) {
+        alert('El nombre del producto no puede estar vacío.');
+        return;
+      }
+
+      const updatedCount = Storage.updateProductFields(originalType, {
+        newTipo,
+        marca,
+        modelo,
+        estado,
+        ubicacion,
+        notas
+      });
+
+      if (state.selectedCategory === originalType) {
+        state.selectedCategory = newTipo;
+      }
+
+      closeEditProductFieldsModal();
+      refreshUI();
+      alert(`Campos de "${newTipo}" actualizados con éxito. ${updatedCount} activos sincronizados en tiempo real.`);
     });
   }
 
@@ -1535,6 +1768,8 @@ document.addEventListener('DOMContentLoaded', () => {
       dom.labelModal.style.display = 'none';
       if (modalConnect) modalConnect.style.display = 'none';
       if (dom.modalManageLocations) dom.modalManageLocations.style.display = 'none';
+      if (dom.modalManageProducts) dom.modalManageProducts.style.display = 'none';
+      if (dom.modalEditProductFields) dom.modalEditProductFields.style.display = 'none';
     }
   });
 

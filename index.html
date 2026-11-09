@@ -70,29 +70,29 @@
   <main class="main-container">
 
     <!-- ========================================================
-         PESTAÑA 1: CUADROS DE UBICACIÓN & PANELES DE PRODUCTO
+         PESTAÑA 1: UBICACIONES Y PRODUCTOS
          ======================================================== -->
     <section id="tab-paneles" class="tab-content-panel active">
       
       <!-- Selector de Modo de Vista (Por Ubicación como Predeterminado) -->
       <div class="view-mode-selector">
         <button type="button" id="btn-mode-locations" class="view-mode-pill active">
-          Cuadros de Ubicación
+          Ubicaciones
         </button>
         <button type="button" id="btn-mode-categories" class="view-mode-pill">
-          Paneles por Producto
+          Productos
         </button>
       </div>
 
-      <!-- VISTA 1A: CUADROS POR UBICACIÓN (PREDETERMINADA) -->
+      <!-- VISTA 1A: POR UBICACIÓN (PREDETERMINADA) -->
       <div id="locations-grid-wrapper">
         <div class="section-header">
           <div>
-            <h2 class="section-title">Cuadros de Ubicación</h2>
-            <span style="font-size: 12px; color: var(--text-muted);">Selecciona dónde se encuentran los activos (Caja 1, Caja 2...)</span>
+            <h2 class="section-title">Ubicaciones</h2>
+            <span style="font-size: 12px; color: var(--text-muted);">Selecciona dónde se encuentran los activos</span>
           </div>
           <button type="button" id="btn-open-manage-locations" class="btn btn-sm btn-outline" style="font-size:12px; font-weight:700;">
-            Editar Cuadros
+            Editar Ubicaciones
           </button>
         </div>
         <div id="locations-grid" class="locations-grid">
@@ -107,7 +107,7 @@
             &larr; Volver a Ubicaciones
           </button>
           <button id="btn-edit-current-location" class="btn btn-sm btn-outline" style="margin-left:auto; font-size:12px;">
-            Renombrar este Cuadro
+            Renombrar Ubicación
           </button>
         </div>
         <div class="section-header" style="margin-bottom: 12px;">
@@ -124,27 +124,35 @@
         </div>
       </div>
 
-      <!-- VISTA 2A: PANELES GENERALES POR PRODUCTO (Alternativa) -->
+      <!-- VISTA 2A: POR PRODUCTO (Alternativa) -->
       <div id="categories-grid-wrapper" style="display:none;">
         <div class="section-header">
-          <h2 class="section-title">Paneles por Producto</h2>
-          <span style="font-size: 12px; color: var(--text-muted);">Toca un panel para ver detalles</span>
+          <div>
+            <h2 class="section-title">Productos</h2>
+            <span style="font-size: 12px; color: var(--text-muted);">Toca un producto para ver o editar sus campos</span>
+          </div>
+          <button type="button" id="btn-open-manage-products" class="btn btn-sm btn-outline" style="font-size:12px; font-weight:700;">
+            Editar Productos
+          </button>
         </div>
         <div id="categories-grid" class="categories-grid">
           <!-- Renderizado dinámico desde app.js -->
         </div>
       </div>
 
-      <!-- VISTA 2B: DETALLE DE UN PRODUCTO (ej. Panel de Teclados) -->
+      <!-- VISTA 2B: DETALLE DE UN PRODUCTO -->
       <div id="product-detail-view" class="product-detail-view" style="display:none;">
         <div class="detail-top-nav">
           <button id="btn-back-categories" class="btn-back">
-            &larr; Volver a Categorías
+            &larr; Volver a Productos
+          </button>
+          <button id="btn-edit-current-product" class="btn btn-sm btn-primary" style="margin-left:auto; font-size:12px; font-weight:700;">
+            Editar Campos del Producto
           </button>
         </div>
         <div class="section-header" style="margin-bottom: 12px;">
           <div>
-            <h2 id="product-detail-title" class="section-title">Panel de Teclados</h2>
+            <h2 id="product-detail-title" class="section-title">Productos</h2>
             <p id="product-detail-count" style="font-size: 12px; color: var(--text-muted);">0 unidades</p>
           </div>
         </div>
@@ -571,22 +579,22 @@
   </div>
 
   <!-- ========================================================
-       MODAL: GESTIÓN Y EDICIÓN DE CUADROS DE UBICACIÓN
+       MODAL: GESTIÓN Y EDICIÓN DE UBICACIONES
        ======================================================== -->
   <div id="modal-manage-locations" class="modal-overlay" style="display:none;">
     <div class="modal-content-card" style="max-width:480px;">
       <div class="modal-header-row">
-        <h3 style="font-size:16px; font-weight:700;">Gestión de Cuadros de Ubicación</h3>
+        <h3 style="font-size:16px; font-weight:700;">Gestión de Ubicaciones</h3>
         <button id="btn-close-manage-locations" style="background:none; border:none; font-size:22px; cursor:pointer;">✕</button>
       </div>
       
       <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">
-        Crea nuevos cuadros de ubicación, o renombra y elimina los existentes. Cualquier cambio actualiza automáticamente los activos asignados en tiempo real.
+        Crea nuevas ubicaciones, o renombra y elimina las existentes. Cualquier cambio actualiza automáticamente los activos asignados en tiempo real.
       </p>
 
       <!-- Formulario para agregar nueva ubicación -->
       <form id="form-add-location" style="margin-bottom:16px;">
-        <label class="form-label" style="font-size:11px; font-weight:700;">Crear Nuevo Cuadro de Ubicación:</label>
+        <label class="form-label" style="font-size:11px; font-weight:700;">Crear Nueva Ubicación:</label>
         <div style="display:flex; gap:8px;">
           <input type="text" id="input-new-location-name" class="form-control" placeholder="Ej: Caja 4, Barra, Depósito 2" required style="flex:1;">
           <button type="submit" class="btn btn-primary" style="white-space:nowrap; padding:8px 14px; font-size:13px; font-weight:700;">
@@ -598,7 +606,7 @@
       <!-- Lista de ubicaciones existentes -->
       <div style="border-top:1px solid var(--border-color); padding-top:12px;">
         <h4 style="font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
-          Cuadros Registrados
+          Ubicaciones Registradas
         </h4>
         <div id="locations-manage-list" style="display:flex; flex-direction:column; gap:8px; max-height:45vh; overflow-y:auto; padding-right:4px;">
           <!-- Renderizado dinámico desde app.js -->
@@ -610,6 +618,125 @@
           Listo / Cerrar
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL: GESTIÓN DE PRODUCTOS
+       ======================================================== -->
+  <div id="modal-manage-products" class="modal-overlay" style="display:none;">
+    <div class="modal-content-card" style="max-width:500px;">
+      <div class="modal-header-row">
+        <h3 style="font-size:16px; font-weight:700;">Gestión de Productos</h3>
+        <button id="btn-close-manage-products" style="background:none; border:none; font-size:22px; cursor:pointer;">✕</button>
+      </div>
+      
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">
+        Administra tus productos, crea nuevos tipos y edita sus campos en tiempo real.
+      </p>
+
+      <!-- Formulario para agregar nuevo producto -->
+      <form id="form-add-product" style="margin-bottom:16px;">
+        <label class="form-label" style="font-size:11px; font-weight:700;">Crear Nuevo Producto / Tipo:</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="input-new-product-name" class="form-control" placeholder="Ej: Monitor, Lector Láser, Tablet" required style="flex:1;">
+          <button type="submit" class="btn btn-primary" style="white-space:nowrap; padding:8px 14px; font-size:13px; font-weight:700;">
+            Crear
+          </button>
+        </div>
+      </form>
+
+      <!-- Lista de productos existentes -->
+      <div style="border-top:1px solid var(--border-color); padding-top:12px;">
+        <h4 style="font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
+          Productos Registrados
+        </h4>
+        <div id="products-manage-list" style="display:flex; flex-direction:column; gap:8px; max-height:45vh; overflow-y:auto; padding-right:4px;">
+          <!-- Renderizado dinámico desde app.js -->
+        </div>
+      </div>
+
+      <div style="margin-top:16px; padding-top:10px; border-top:1px solid var(--border-color);">
+        <button type="button" id="btn-done-manage-products" class="btn btn-outline btn-block">
+          Listo / Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL: PANEL PARA EDITAR CAMPOS DEL PRODUCTO
+       ======================================================== -->
+  <div id="modal-edit-product-fields" class="modal-overlay" style="display:none;">
+    <div class="modal-content-card" style="max-width:480px;">
+      <div class="modal-header-row">
+        <div>
+          <span style="font-size:11px; font-weight:700; color:var(--primary); text-transform:uppercase;">Editor de Campos</span>
+          <h3 id="edit-product-modal-title" style="font-size:17px; font-weight:800; color:#1e293b;">Editar Producto</h3>
+        </div>
+        <button id="btn-close-edit-product-fields" style="background:none; border:none; font-size:22px; cursor:pointer;">✕</button>
+      </div>
+
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">
+        Modifica los campos del producto. Puedes actualizar el nombre o aplicar la marca, modelo, estado y ubicación a todos los activos asociados.
+      </p>
+
+      <form id="form-edit-product-fields">
+        <input type="hidden" id="edit-product-original-type" value="">
+
+        <div style="margin-bottom:12px;">
+          <label class="form-label" style="font-size:11px; font-weight:700;">Nombre del Producto (Tipo):</label>
+          <input type="text" id="input-edit-product-type" class="form-control" required placeholder="Ej: Teclado">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div>
+            <label class="form-label" style="font-size:11px; font-weight:700;">Marca Común:</label>
+            <input type="text" id="input-edit-product-marca" class="form-control" placeholder="Ej: Dell">
+          </div>
+          <div>
+            <label class="form-label" style="font-size:11px; font-weight:700;">Modelo Común:</label>
+            <input type="text" id="input-edit-product-modelo" class="form-control" placeholder="Ej: Standard USB">
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div>
+            <label class="form-label" style="font-size:11px; font-weight:700;">Estado:</label>
+            <select id="select-edit-product-estado" class="form-control">
+              <option value="">(Sin cambiar)</option>
+              <option value="Operativo">Operativo</option>
+              <option value="En Mantenimiento">En Mantenimiento</option>
+              <option value="De Baja">De Baja</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label" style="font-size:11px; font-weight:700;">Ubicación:</label>
+            <select id="select-edit-product-ubicacion" class="form-control">
+              <option value="">(Sin cambiar)</option>
+              <!-- Opciones dinámicas -->
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label class="form-label" style="font-size:11px; font-weight:700;">Notas Generales:</label>
+          <input type="text" id="input-edit-product-notas" class="form-control" placeholder="Notas adicionales para este producto">
+        </div>
+
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:14px; font-size:11px; color:#475569;">
+          <strong>Nota de sincronización:</strong> Los cambios se guardarán automáticamente en tu base de datos de Supabase en tiempo real.
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button type="submit" class="btn btn-primary" style="flex:1; font-weight:700; padding:10px;">
+            Guardar Campos
+          </button>
+          <button type="button" id="btn-cancel-edit-product-fields" class="btn btn-outline" style="flex:1;">
+            Cancelar
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

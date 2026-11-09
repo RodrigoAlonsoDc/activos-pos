@@ -668,8 +668,130 @@ const Storage = {
   // Obtiene los tipos / productos únicos
   getTipos() {
     const list = this.getActivos();
-    const tipos = new Set(list.map(a => a.tipo).filter(Boolean));
+    let custom = [];
+    try {
+      custom = JSON.parse(localStorage.getItem('activos_pos_custom_types') || '[]');
+    } catch (e) {}
+    const tipos = new Set([...list.map(a => a.tipo).filter(Boolean), ...custom]);
     return Array.from(tipos).sort();
+  },
+
+  // Agrega un nuevo tipo de producto
+  addProductType(nombre) {
+    if (!nombre || !nombre.trim()) return false;
+    const clean = nombre.trim();
+    let custom = [];
+    try {
+      custom = JSON.parse(localStorage.getItem('activos_pos_custom_types') || '[]');
+    } catch (e) {}
+    if (!custom.includes(clean)) {
+      custom.push(clean);
+      localStorage.setItem('activos_pos_custom_types', JSON.stringify(custom));
+      return true;
+    }
+    return false;
+  },
+
+  // Renombra un tipo de producto en todos los activos (en tiempo real en Supabase y local)
+  renameProductType(oldType, newType) {
+    if (!oldType || !newType || !newType.trim()) return 0;
+    const cleanNew = newType.trim();
+
+    try {
+      let custom = JSON.parse(localStorage.getItem('activos_pos_custom_types') || '[]');
+      const idx = custom.indexOf(oldType);
+      if (idx >= 0) {
+        custom[idx] = cleanNew;
+        localStorage.setItem('activos_pos_custom_types', JSON.stringify(custom));
+      }
+    } catch (e) {}
+
+    const list = [...this.getActivos()];
+    let count = 0;
+    list.forEach(a => {
+      if ((a.tipo || '').toLowerCase() === oldType.toLowerCase()) {
+        a.tipo = cleanNew;
+        count++;
+      }
+    });
+
+    if (count > 0) {
+      this.setActivos(list, false);
+      if (window.SupabaseClient && SupabaseClient.isConfigured()) {
+        SupabaseClient.renameProductType(oldType, cleanNew).catch(e => console.warn(e));
+      }
+      window.dispatchEvent(new CustomEvent('activos-synced', { detail: list }));
+    }
+    return count;
+  },
+
+  // Actualiza los campos comunes de todos los activos de un producto
+  updateProductFields(productType, fields) {
+    if (!productType || !fields) return 0;
+    const list = [...this.getActivos()];
+    let count = 0;
+    const newTipo = fields.newTipo && fields.newTipo.trim() ? fields.newTipo.trim() : null;
+
+    list.forEach(a => {
+      if ((a.tipo || '').toLowerCase() === productType.toLowerCase()) {
+        if (newTipo) a.tipo = newTipo;
+        if (fields.marca !== undefined && fields.marca !== '') a.marca = fields.marca.trim();
+        if (fields.modelo !== undefined && fields.modelo !== '') a.modelo = fields.modelo.trim();
+        if (fields.estado !== undefined && fields.estado !== '') a.estado = fields.estado.trim();
+        if (fields.ubicacion !== undefined && fields.ubicacion !== '') a.ubicacion = fields.ubicacion.trim();
+        if (fields.notas !== undefined && fields.notas !== '') a.notas = fields.notas.trim();
+        count++;
+      }
+    });
+
+    if (count > 0) {
+      this.setActivos(list, false);
+      if (window.SupabaseClient && SupabaseClient.isConfigured()) {
+        SupabaseClient.updateProductFields(productType, fields).catch(e => console.warn(e));
+      }
+      window.dispatchEvent(new CustomEvent('activos-synced', { detail: list }));
+    }
+
+    if (newTipo && newTipo !== productType) {
+      try {
+        let custom = JSON.parse(localStorage.getItem('activos_pos_custom_types') || '[]');
+        const idx = custom.indexOf(productType);
+        if (idx >= 0) {
+          custom[idx] = newTipo;
+          localStorage.setItem('activos_pos_custom_types', JSON.stringify(custom));
+        }
+      } catch (e) {}
+    }
+
+    return count;
+  },
+
+  // Elimina un tipo de producto
+  deleteProductType(productType) {
+    if (!productType) return 0;
+    try {
+      let custom = JSON.parse(localStorage.getItem('activos_pos_custom_types') || '[]');
+      custom = custom.filter(c => c.toLowerCase() !== productType.toLowerCase());
+      localStorage.setItem('activos_pos_custom_types', JSON.stringify(custom));
+    } catch (e) {}
+
+    const list = [...this.getActivos()];
+    let count = 0;
+    list.forEach(a => {
+      if ((a.tipo || '').toLowerCase() === productType.toLowerCase()) {
+        a.tipo = 'General';
+        count++;
+      }
+    });
+
+    if (count > 0) {
+      this.setActivos(list, false);
+      if (window.SupabaseClient && SupabaseClient.isConfigured()) {
+        SupabaseClient.renameProductType(productType, 'General').catch(e => console.warn(e));
+      }
+      window.dispatchEvent(new CustomEvent('activos-synced', { detail: list }));
+    }
+    return count;
   },
 
   // Obtiene las ubicaciones únicas registradas

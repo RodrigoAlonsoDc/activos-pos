@@ -1,0 +1,7 @@
+# Archivos temporales y de sistema
+.DS_Store
+Thumbs.db
+*.log
+
+# Scripts de servidor local antiguo (no requeridos en la nube)
+*.ps1
