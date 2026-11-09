@@ -486,14 +486,21 @@ const Storage = {
     }
   },
 
-  // Actualiza la insignia visual en la cabecera
+  // Actualiza la insignia visual en la cabecera (móvil y desktop)
   updateSyncBadge(status, text) {
     const badge = document.getElementById('sync-status-badge');
     const label = document.getElementById('sync-status-text');
-    if (!badge || !label) return;
+    if (badge && label) {
+      badge.className = `sync-badge ${status}`;
+      label.textContent = text;
+    }
 
-    badge.className = `sync-badge ${status}`;
-    label.textContent = text;
+    const dBadge = document.getElementById('desktop-sync-status-badge');
+    const dLabel = document.getElementById('desktop-sync-status-text');
+    if (dBadge && dLabel) {
+      dBadge.className = `sync-badge ${status}`;
+      dLabel.textContent = text;
+    }
   },
 
   // Sincronización bidireccional completa con Supabase

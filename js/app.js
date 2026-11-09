@@ -84,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     filterStatus: document.getElementById('filter-status'),
     filterLocation: document.getElementById('filter-location'),
     assetsList: document.getElementById('assets-list'),
+    desktopAssetsTableBody: document.getElementById('desktop-assets-table-body'),
     assetsCountText: document.getElementById('assets-count-text'),
 
     // Formulario de Registro
@@ -168,6 +169,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Iconos SVG limpios y profesionales (sin emojis)
   const SVG_TAG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
   const SVG_EDIT = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+  const SVG_EYE = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+  const SVG_TRASH = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
 
   function getProductIcon(tipo) {
     return '';
@@ -178,10 +181,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   function updateStats() {
     const stats = Storage.getEstadisticas();
-    dom.statTotal.textContent = stats.total;
-    dom.statOperativos.textContent = stats.operativos;
-    dom.statMantenimiento.textContent = stats.mantenimiento;
-    dom.statDeBaja.textContent = stats.deBaja;
+    if (dom.statTotal) dom.statTotal.textContent = stats.total;
+    if (dom.statOperativos) dom.statOperativos.textContent = stats.operativos;
+    if (dom.statMantenimiento) dom.statMantenimiento.textContent = stats.mantenimiento;
+    if (dom.statDeBaja) dom.statDeBaja.textContent = stats.deBaja;
+
+    // Estadísticas para cabecera de PC / Laptop
+    const dTotal = document.getElementById('desktop-stat-total');
+    const dOperativos = document.getElementById('desktop-stat-operativos');
+    const dMant = document.getElementById('desktop-stat-mantenimiento');
+    const dDeBaja = document.getElementById('desktop-stat-debaja');
+    if (dTotal) dTotal.textContent = stats.total;
+    if (dOperativos) dOperativos.textContent = stats.operativos;
+    if (dMant) dMant.textContent = stats.mantenimiento;
+    if (dDeBaja) dDeBaja.textContent = stats.deBaja;
   }
 
   function updateDatalists() {
@@ -731,10 +744,20 @@ document.addEventListener('DOMContentLoaded', () => {
           <p>No se encontraron activos con los filtros aplicados.</p>
         </div>
       `;
+      if (dom.desktopAssetsTableBody) {
+        dom.desktopAssetsTableBody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 36px 16px; color: var(--text-muted); font-size: 13px;">
+              No se encontraron activos con los filtros aplicados.
+            </td>
+          </tr>
+        `;
+      }
       return;
     }
 
     let html = '';
+    let tableHtml = '';
     activos.forEach(asset => {
       const barcodeValue = asset.barcode || asset.id;
       const barcodeSvg = Code128.renderSVG(barcodeValue, { height: 38, width: 1.5, fontSize: 11 });
@@ -743,6 +766,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const badgeClass = isOperativo ? 'badge-green' : (isMantenimiento ? 'badge-orange' : 'badge-red');
       const icon = getProductIcon(asset.tipo);
 
+      // Ficha móvil
       html += `
         <div class="asset-card" data-id="${asset.id}">
           <div class="asset-card-top">
@@ -779,9 +803,40 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
       `;
+
+      // Fila de tabla para PC / Laptop
+      tableHtml += `
+        <tr>
+          <td><span class="table-id-badge">${asset.id}</span></td>
+          <td><span class="table-barcode-preview">${barcodeValue}</span></td>
+          <td><strong style="color: #0f172a;">${asset.tipo || '-'}</strong></td>
+          <td>
+            <div style="font-weight: 600;">${asset.marca || '-'}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">${asset.modelo || ''}</div>
+          </td>
+          <td><span style="font-family: monospace; font-size: 12px; color: #475569;">${asset.serie || '-'}</span></td>
+          <td>
+            <span style="background: #eff6ff; color: #1e40af; font-weight: 600; padding: 4px 10px; border-radius: 6px; font-size: 12px;">
+              ${asset.ubicacion || 'Sin Ubicación'}
+            </span>
+          </td>
+          <td><span class="badge ${badgeClass}">${asset.estado || 'Operativo'}</span></td>
+          <td>
+            <div class="table-actions-cell">
+              <button class="btn-icon" title="Ver Detalle" onclick="window.showAssetModal('${asset.id}')">${SVG_EYE}</button>
+              <button class="btn-icon" title="Ver / Imprimir Etiqueta" onclick="window.showLabelModal('${asset.id}')">${SVG_TAG}</button>
+              <button class="btn-icon" title="Editar" onclick="window.editAsset('${asset.id}')">${SVG_EDIT}</button>
+              <button class="btn-icon" title="Eliminar" onclick="window.deleteAsset('${asset.id}')" style="color: #ef4444;">${SVG_TRASH}</button>
+            </div>
+          </td>
+        </tr>
+      `;
     });
 
     dom.assetsList.innerHTML = html;
+    if (dom.desktopAssetsTableBody) {
+      dom.desktopAssetsTableBody.innerHTML = tableHtml;
+    }
   }
 
   // Escuchar inputs de búsqueda y filtros
@@ -898,6 +953,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  // Función global para eliminar activo
+  window.deleteAsset = (id) => {
+    const asset = Storage.getById(id);
+    if (!asset) return;
+    if (confirm(`¿Eliminar el activo ${asset.id} (${asset.tipo || ''})?`)) {
+      Storage.deleteActivo(id);
+      refreshUI();
+      renderAllAssets();
+    }
+  };
+
   // Función rápida para agregar activo con categoría preseleccionada
   window.quickAddAssetForCategory = (tipoName) => {
     dom.assetForm.reset();
@@ -919,6 +985,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     dom.navButtons.forEach(btn => {
       btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
+    });
+
+    // Sincronizar menú superior de PC / Laptop
+    const desktopNavLinks = document.querySelectorAll('.desktop-nav-link');
+    desktopNavLinks.forEach(link => {
+      const linkTab = link.getAttribute('data-tab');
+      const linkMode = link.getAttribute('data-mode');
+      if (linkMode) {
+        link.classList.toggle('active', linkTab === tabId && state.subViewMode === linkMode);
+      } else {
+        link.classList.toggle('active', linkTab === tabId);
+      }
     });
 
     dom.tabPanels.forEach(panel => {
@@ -965,6 +1043,47 @@ document.addEventListener('DOMContentLoaded', () => {
       navigateToTab(tab);
     });
   });
+
+  // Navegación y acciones directas desde la cabecera Desktop (PC / Laptop)
+  document.querySelectorAll('.desktop-nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+      const tab = link.getAttribute('data-tab');
+      const mode = link.getAttribute('data-mode');
+      if (mode) {
+        state.subViewMode = mode;
+        if (mode === 'locations') {
+          state.selectedLocation = null;
+          if (dom.btnModeLocations) dom.btnModeLocations.classList.add('active');
+          if (dom.btnModeCategories) dom.btnModeCategories.classList.remove('active');
+        } else {
+          state.selectedCategory = null;
+          if (dom.btnModeLocations) dom.btnModeLocations.classList.remove('active');
+          if (dom.btnModeCategories) dom.btnModeCategories.classList.add('active');
+        }
+      }
+      navigateToTab(tab);
+    });
+  });
+
+  const btnDesktopQuickScan = document.getElementById('btn-desktop-quick-scan');
+  if (btnDesktopQuickScan) {
+    btnDesktopQuickScan.addEventListener('click', () => {
+      openScanner();
+    });
+  }
+
+  const btnDesktopQuickAdd = document.getElementById('btn-desktop-quick-add');
+  if (btnDesktopQuickAdd) {
+    btnDesktopQuickAdd.addEventListener('click', () => {
+      dom.assetForm.reset();
+      state.editingAssetId = null;
+      dom.formTitle.textContent = "Registrar Nuevo Activo";
+      dom.btnCancelEdit.style.display = 'none';
+      dom.formId.value = Storage.generateNextId();
+      dom.formBarcode.value = dom.formId.value;
+      navigateToTab('registro');
+    });
+  }
 
   // ==========================================
   // ESCÁNER DE CÁMARA (QR & CÓDIGO DE BARRAS)

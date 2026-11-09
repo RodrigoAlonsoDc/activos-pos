@@ -330,14 +330,19 @@ const SupabaseClient = {
         .subscribe((status) => {
           const badge = document.getElementById('sync-status-badge');
           const text = document.getElementById('sync-status-text');
-          if (badge && text) {
-            if (status === 'SUBSCRIBED') {
-              badge.className = 'sync-badge online';
-              text.textContent = 'Supabase Nube (Tiempo Real)';
-            } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-              badge.className = 'sync-badge offline';
-              text.textContent = 'Reconectando Supabase...';
-            }
+          const dBadge = document.getElementById('desktop-sync-status-badge');
+          const dText = document.getElementById('desktop-sync-status-text');
+          const updateEl = (b, t, cls, msg) => {
+            if (b) b.className = cls;
+            if (t) t.textContent = msg;
+          };
+
+          if (status === 'SUBSCRIBED') {
+            updateEl(badge, text, 'sync-badge online', 'Supabase Nube (Tiempo Real)');
+            updateEl(dBadge, dText, 'sync-badge online', 'Supabase Nube (Tiempo Real)');
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            updateEl(badge, text, 'sync-badge offline', 'Reconectando Supabase...');
+            updateEl(dBadge, dText, 'sync-badge offline', 'Reconectando Supabase...');
           }
         });
     } catch (err) {

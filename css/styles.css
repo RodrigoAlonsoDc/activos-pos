@@ -1351,3 +1351,302 @@ textarea.form-control {
   padding: 40px 16px;
   color: var(--text-muted);
 }
+
+/* ========================================================
+   SEPARACIÓN DE VISTAS (MÓVIL VS PC ESCRITORIO / LAPTOP)
+   ======================================================== */
+.mobile-only {
+  display: block;
+}
+
+.desktop-only {
+  display: none !important;
+}
+
+/* ========================================================
+   CABECERA DESKTOP (PC Y LAPTOPS)
+   ======================================================== */
+.desktop-header {
+  background: #ffffff;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.desktop-header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 12px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.desktop-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.desktop-brand-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--primary-light);
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.desktop-brand-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+
+.desktop-brand-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.desktop-nav-menu {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.desktop-nav-link {
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.desktop-nav-link:hover {
+  color: #1e293b;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.desktop-nav-link.active {
+  background: #ffffff;
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.desktop-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ========================================================
+   TARJETAS KPI EJECUTIVAS PARA PC / LAPTOPS
+   ======================================================== */
+.desktop-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.desktop-kpi-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.desktop-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.desktop-kpi-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.desktop-kpi-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.desktop-kpi-value {
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+.desktop-kpi-value.total { color: #0f172a; }
+.desktop-kpi-value.green { color: #16a34a; }
+.desktop-kpi-value.orange { color: #d97706; }
+.desktop-kpi-value.red { color: #dc2626; }
+
+.desktop-kpi-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.desktop-kpi-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.desktop-kpi-icon.blue { background: #eff6ff; color: #2563eb; }
+.desktop-kpi-icon.green { background: #dcfce7; color: #16a34a; }
+.desktop-kpi-icon.orange { background: #fef3c7; color: #d97706; }
+.desktop-kpi-icon.red { background: #fee2e2; color: #dc2626; }
+
+/* ========================================================
+   TABLA DE DATOS DESKTOP (ESTILO ERP / EXCEL)
+   ======================================================== */
+.desktop-table-container {
+  margin-top: 10px;
+}
+
+.desktop-table-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.desktop-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.desktop-data-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.desktop-data-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.desktop-data-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.desktop-data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table-id-badge {
+  font-family: monospace;
+  font-weight: 800;
+  color: var(--primary);
+  background: #eff6ff;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.table-barcode-preview {
+  font-family: monospace;
+  font-size: 11px;
+  color: #475569;
+}
+
+.table-actions-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* ========================================================
+   MEDIA QUERY PARA PC / LAPTOP (PANTALLAS > 768px)
+   ======================================================== */
+@media (min-width: 769px) {
+  body {
+    padding-bottom: 0 !important;
+    background-color: #f8fafc;
+  }
+
+  .mobile-only {
+    display: none !important;
+  }
+
+  .desktop-only {
+    display: block !important;
+  }
+
+  .desktop-header.desktop-only {
+    display: block !important;
+  }
+
+  .desktop-kpi-grid.desktop-only {
+    display: grid !important;
+  }
+
+  .bottom-nav {
+    display: none !important;
+  }
+
+  .app-header.mobile-only {
+    display: none !important;
+  }
+
+  .main-container {
+    max-width: 1400px;
+    padding: 24px 32px;
+  }
+
+  .locations-grid,
+  .categories-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
+    gap: 20px !important;
+  }
+}
