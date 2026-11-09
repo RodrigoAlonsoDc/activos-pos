@@ -79,7 +79,23 @@ const SupabaseClient = {
         .order('id', { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      const parsed = (data || []).map(a => {
+        let subtipo = '';
+        let cleanNotas = a.notas || '';
+        if (cleanNotas) {
+          const match = cleanNotas.match(/\[Subproducto:\s*([^\]]+)\]/i);
+          if (match) {
+            subtipo = match[1].trim();
+            cleanNotas = cleanNotas.replace(/\[Subproducto:\s*[^\]]+\]/gi, '').trim();
+          }
+        }
+        return {
+          ...a,
+          notas: cleanNotas,
+          subtipo: subtipo || a.modelo || 'General'
+        };
+      });
+      return parsed;
     } catch (err) {
       console.warn("Supabase: Error al obtener activos:", err);
       return null;
@@ -90,6 +106,11 @@ const SupabaseClient = {
   async saveActivo(activo) {
     if (!this.isConfigured()) return false;
     try {
+      let cleanNotas = (activo.notas || '').replace(/\[Subproducto:\s*[^\]]+\]/gi, '').trim();
+      if (activo.subtipo && activo.subtipo.trim()) {
+        cleanNotas = (cleanNotas ? cleanNotas + ' ' : '') + `[Subproducto: ${activo.subtipo.trim()}]`;
+      }
+
       const payload = {
         id: activo.id,
         barcode: activo.barcode || activo.id,
@@ -99,7 +120,7 @@ const SupabaseClient = {
         serie: activo.serie || '-',
         estado: activo.estado || 'Operativo',
         ubicacion: activo.ubicacion || 'Sin Ubicación Asignada',
-        notas: activo.notas || '',
+        notas: cleanNotas,
         fecha: activo.fecha || new Date().toISOString().slice(0, 10),
         updated_at: new Date().toISOString()
       };
@@ -120,19 +141,25 @@ const SupabaseClient = {
   async saveAllActivos(activos) {
     if (!this.isConfigured()) return false;
     try {
-      const cleanList = activos.map(a => ({
-        id: a.id,
-        barcode: a.barcode || a.id,
-        tipo: a.tipo || 'General',
-        marca: a.marca || '-',
-        modelo: a.modelo || '-',
-        serie: a.serie || '-',
-        estado: a.estado || 'Operativo',
-        ubicacion: a.ubicacion || 'Sin Ubicación Asignada',
-        notas: a.notas || '',
-        fecha: a.fecha || new Date().toISOString().slice(0, 10),
-        updated_at: new Date().toISOString()
-      }));
+      const cleanList = activos.map(a => {
+        let cleanNotas = (a.notas || '').replace(/\[Subproducto:\s*[^\]]+\]/gi, '').trim();
+        if (a.subtipo && a.subtipo.trim()) {
+          cleanNotas = (cleanNotas ? cleanNotas + ' ' : '') + `[Subproducto: ${a.subtipo.trim()}]`;
+        }
+        return {
+          id: a.id,
+          barcode: a.barcode || a.id,
+          tipo: a.tipo || 'General',
+          marca: a.marca || '-',
+          modelo: a.modelo || '-',
+          serie: a.serie || '-',
+          estado: a.estado || 'Operativo',
+          ubicacion: a.ubicacion || 'Sin Ubicación Asignada',
+          notas: cleanNotas,
+          fecha: a.fecha || new Date().toISOString().slice(0, 10),
+          updated_at: new Date().toISOString()
+        };
+      });
 
       const { error } = await this.client
         .from('activos')

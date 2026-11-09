@@ -450,6 +450,23 @@ const Storage = {
 
     if (eventType === 'INSERT' || eventType === 'UPDATE') {
       if (!newRecord || !newRecord.id) return;
+      if (newRecord.notas) {
+        const subMatch = newRecord.notas.match(/\[Subproducto:\s*([^\]]+)\]/i);
+        if (subMatch) {
+          newRecord.subtipo = subMatch[1].trim();
+          newRecord.notas = newRecord.notas.replace(/\[Subproducto:\s*[^\]]+\]/gi, '').trim();
+        }
+      }
+      if (!newRecord.subtipo && newRecord.modelo && newRecord.modelo !== '-') {
+        newRecord.subtipo = newRecord.modelo.trim();
+      }
+      if (!newRecord.subtipo) {
+        newRecord.subtipo = 'General';
+      }
+      if (newRecord.tipo && newRecord.subtipo) {
+        this.addSubProduct(newRecord.tipo, newRecord.subtipo);
+      }
+
       const idx = list.findIndex(a => (a.id || '').trim().toLowerCase() === (newRecord.id || '').trim().toLowerCase());
       if (idx >= 0) {
         list[idx] = newRecord;
@@ -578,11 +595,32 @@ const Storage = {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
       this._activos = data ? JSON.parse(data) : DATOS_INICIALES;
-      return this._activos;
     } catch (e) {
       console.error("Error leyendo localStorage", e);
-      return DATOS_INICIALES;
+      this._activos = DATOS_INICIALES;
     }
+
+    // Normalizar subtipo en cada activo
+    if (Array.isArray(this._activos)) {
+      this._activos.forEach(a => {
+        if (!a.subtipo) {
+          if (a.notas) {
+            const m = a.notas.match(/\[Subproducto:\s*([^\]]+)\]/i);
+            if (m) {
+              a.subtipo = m[1].trim();
+            }
+          }
+          if (!a.subtipo && a.modelo && a.modelo !== '-') {
+            a.subtipo = a.modelo.trim();
+          }
+          if (!a.subtipo) {
+            a.subtipo = 'General';
+          }
+        }
+      });
+    }
+
+    return this._activos;
   },
 
   // Guarda la lista completa (en localStorage y en Supabase en tiempo real)
@@ -619,6 +657,18 @@ const Storage = {
 
   // Guarda o actualiza un activo (en tiempo real en Supabase y local)
   saveActivo(item) {
+    if (!item.subtipo && item.modelo && item.modelo !== '-') {
+      item.subtipo = item.modelo.trim();
+    }
+    if (!item.subtipo) {
+      item.subtipo = 'General';
+    }
+
+    // Registrar en el catálogo de productos y sub-productos
+    if (item.tipo && item.subtipo) {
+      this.addSubProduct(item.tipo, item.subtipo);
+    }
+
     const list = [...this.getActivos()];
     const index = list.findIndex(a => a.id.trim().toLowerCase() === item.id.trim().toLowerCase());
 
@@ -672,28 +722,139 @@ const Storage = {
     return `ACT-${nextNum}`;
   },
 
+  // Obtiene el catálogo completo de productos con sus sub-productos
+  getProductCatalog() {
+    let catalog = {};
+    try {
+      catalog = JSON.parse(localStorage.getItem('activos_pos_product_catalog') || '{}');
+    } catch (e) {
+      catalog = {};
+    }
+
+    // Inicializar o enriquecer con los activos existentes
+    const list = this.getActivos();
+    list.forEach(a => {
+      const tipo = (a.tipo || 'General').trim();
+      if (!catalog[tipo]) {
+        catalog[tipo] = [];
+      }
+      const sub = a.subtipo || (a.modelo && a.modelo !== '-' ? a.modelo.trim() : null);
+      if (sub && !catalog[tipo].includes(sub)) {
+        catalog[tipo].push(sub);
+      }
+    });
+
+    // Asegurar que tipos personalizados de versiones previas estén presentes
+    try {
+      const custom = JSON.parse(localStorage.getItem('activos_pos_custom_types') || '[]');
+      custom.forEach(c => {
+        if (!catalog[c]) catalog[c] = [];
+      });
+    } catch (e) {}
+
+    return catalog;
+  },
+
+  // Guarda el catálogo de productos y sub-productos
+  setProductCatalog(catalog) {
+    try {
+      localStorage.setItem('activos_pos_product_catalog', JSON.stringify(catalog));
+      localStorage.setItem('activos_pos_custom_types', JSON.stringify(Object.keys(catalog)));
+    } catch (e) {}
+  },
+
   // Obtiene los tipos / productos únicos
   getTipos() {
+    const catalog = this.getProductCatalog();
     const list = this.getActivos();
-    let custom = [];
-    try {
-      custom = JSON.parse(localStorage.getItem('activos_pos_custom_types') || '[]');
-    } catch (e) {}
-    const tipos = new Set([...list.map(a => a.tipo).filter(Boolean), ...custom]);
+    const tipos = new Set([...Object.keys(catalog), ...list.map(a => a.tipo).filter(Boolean)]);
     return Array.from(tipos).sort();
   },
 
-  // Agrega un nuevo tipo de producto
-  addProductType(nombre) {
+  // Obtiene los sub-productos de un producto específico
+  getSubProducts(productName) {
+    if (!productName) return [];
+    const catalog = this.getProductCatalog();
+    const clean = productName.trim();
+    const subs = [...(catalog[clean] || [])];
+    const list = this.getActivos();
+    list.forEach(a => {
+      if ((a.tipo || '').toLowerCase() === clean.toLowerCase()) {
+        const s = a.subtipo || (a.modelo && a.modelo !== '-' ? a.modelo.trim() : null);
+        if (s && !subs.includes(s)) {
+          subs.push(s);
+        }
+      }
+    });
+    return subs;
+  },
+
+  // Agrega un nuevo tipo de producto con opción de sub-productos iniciales
+  addProductType(nombre, subproductos = []) {
     if (!nombre || !nombre.trim()) return false;
     const clean = nombre.trim();
-    let custom = [];
-    try {
-      custom = JSON.parse(localStorage.getItem('activos_pos_custom_types') || '[]');
-    } catch (e) {}
-    if (!custom.includes(clean)) {
-      custom.push(clean);
-      localStorage.setItem('activos_pos_custom_types', JSON.stringify(custom));
+    const catalog = this.getProductCatalog();
+    if (!catalog[clean]) {
+      catalog[clean] = [];
+    }
+
+    let subsToAdd = [];
+    if (typeof subproductos === 'string') {
+      subsToAdd = subproductos.split(',').map(s => s.trim()).filter(Boolean);
+    } else if (Array.isArray(subproductos)) {
+      subsToAdd = subproductos.map(s => (s || '').toString().trim()).filter(Boolean);
+    }
+
+    subsToAdd.forEach(s => {
+      if (!catalog[clean].includes(s)) {
+        catalog[clean].push(s);
+      }
+    });
+
+    this.setProductCatalog(catalog);
+    return true;
+  },
+
+  // Agrega un sub-producto a un producto existente
+  addSubProduct(productName, subProductName) {
+    if (!productName || !subProductName) return false;
+    const cleanProd = productName.trim();
+    const cleanSub = subProductName.trim();
+    if (!cleanSub) return false;
+
+    const catalog = this.getProductCatalog();
+    if (!catalog[cleanProd]) {
+      catalog[cleanProd] = [];
+    }
+    if (!catalog[cleanProd].includes(cleanSub)) {
+      catalog[cleanProd].push(cleanSub);
+      this.setProductCatalog(catalog);
+      return true;
+    }
+    return false;
+  },
+
+  // Elimina un sub-producto de un producto
+  deleteSubProduct(productName, subProductName) {
+    if (!productName || !subProductName) return false;
+    const cleanProd = productName.trim();
+    const cleanSub = subProductName.trim();
+    const catalog = this.getProductCatalog();
+    if (catalog[cleanProd]) {
+      catalog[cleanProd] = catalog[cleanProd].filter(s => s.toLowerCase() !== cleanSub.toLowerCase());
+      this.setProductCatalog(catalog);
+
+      const list = [...this.getActivos()];
+      let count = 0;
+      list.forEach(a => {
+        if ((a.tipo || '').toLowerCase() === cleanProd.toLowerCase() && (a.subtipo || '').toLowerCase() === cleanSub.toLowerCase()) {
+          a.subtipo = 'General';
+          count++;
+        }
+      });
+      if (count > 0) {
+        this.setActivos(list, false);
+      }
       return true;
     }
     return false;
@@ -942,7 +1103,8 @@ const Storage = {
     const headers = [
       "Código",
       "Código de Barras",
-      "Tipo de Activo",
+      "Tipo de Activo (Producto)",
+      "Sub-producto",
       "Marca",
       "Modelo",
       "N° de Serie",
@@ -956,6 +1118,7 @@ const Storage = {
       `"${(a.id || '').replace(/"/g, '""')}"`,
       `"${(a.barcode || a.id || '').replace(/"/g, '""')}"`,
       `"${(a.tipo || '').replace(/"/g, '""')}"`,
+      `"${(a.subtipo || '').replace(/"/g, '""')}"`,
       `"${(a.marca || '').replace(/"/g, '""')}"`,
       `"${(a.modelo || '').replace(/"/g, '""')}"`,
       `"${(a.serie || '').replace(/"/g, '""')}"`,

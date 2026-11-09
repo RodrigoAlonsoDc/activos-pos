@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     subViewMode: 'locations', // 'locations' (predeterminado) o 'categories'
     selectedLocation: null, // Si está viendo una ubicación específica (ej: "Caja 1")
     selectedCategory: null, // Si está viendo un producto específico (ej: "Teclado")
+    selectedSubCategory: null, // Si está viendo un sub-producto específico (ej: "Standard USB")
     selectedLocationCategoryFilter: 'todos',
     scannerInstance: null,
     editingAssetId: null,
@@ -57,12 +58,23 @@ document.addEventListener('DOMContentLoaded', () => {
     productDetailList: document.getElementById('product-detail-list'),
     btnBackToCategories: document.getElementById('btn-back-categories'),
 
+    // Sub-productos (Cuadros de opciones al presionar un producto)
+    subproductsGridWrapper: document.getElementById('subproducts-grid-wrapper'),
+    subproductsGrid: document.getElementById('subproducts-grid'),
+    btnAddSubproductDirect: document.getElementById('btn-add-subproduct-direct'),
+    subproductDetailView: document.getElementById('subproduct-detail-view'),
+    btnBackToSubproducts: document.getElementById('btn-back-to-subproducts'),
+    subproductDetailTitle: document.getElementById('subproduct-detail-title'),
+    subproductDetailCount: document.getElementById('subproduct-detail-count'),
+    btnQuickAddSubproductAsset: document.getElementById('btn-quick-add-subproduct-asset'),
+
     // Modal Gestión de Productos
     modalManageProducts: document.getElementById('modal-manage-products'),
     btnCloseManageProducts: document.getElementById('btn-close-manage-products'),
     btnDoneManageProducts: document.getElementById('btn-done-manage-products'),
     formAddProduct: document.getElementById('form-add-product'),
     inputNewProductName: document.getElementById('input-new-product-name'),
+    inputNewSubproductName: document.getElementById('input-new-subproduct-name'),
     productsManageList: document.getElementById('products-manage-list'),
 
     // Modal Editar Campos del Producto
@@ -76,6 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
     selectEditProductEstado: document.getElementById('select-edit-product-estado'),
     selectEditProductUbicacion: document.getElementById('select-edit-product-ubicacion'),
     inputEditProductNotas: document.getElementById('input-edit-product-notas'),
+    editProductSubproductsList: document.getElementById('edit-product-subproducts-list'),
+    inputEditProductNewSubproduct: document.getElementById('input-edit-product-new-subproduct'),
+    btnAddSubproductInEdit: document.getElementById('btn-add-subproduct-in-edit'),
     btnCloseEditProductFields: document.getElementById('btn-close-edit-product-fields'),
     btnCancelEditProductFields: document.getElementById('btn-cancel-edit-product-fields'),
 
@@ -93,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
     formId: document.getElementById('input-id'),
     formBarcode: document.getElementById('input-barcode'),
     formTipo: document.getElementById('input-tipo'),
+    formSubtipo: document.getElementById('input-subtipo'),
     formMarca: document.getElementById('input-marca'),
     formModelo: document.getElementById('input-modelo'),
     formSerie: document.getElementById('input-serie'),
@@ -103,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnScanBarcodeField: document.getElementById('btn-scan-barcode-field'),
     btnCancelEdit: document.getElementById('btn-cancel-edit'),
     datalistTipos: document.getElementById('datalist-tipos'),
+    datalistSubtipos: document.getElementById('datalist-subtipos'),
     datalistUbicaciones: document.getElementById('datalist-ubicaciones'),
 
     // Modal Escáner
@@ -126,6 +143,8 @@ document.addEventListener('DOMContentLoaded', () => {
     modalAssetQrSvg: document.getElementById('modal-asset-qr-svg'),
     modalAssetId: document.getElementById('modal-asset-id'),
     modalAssetTipo: document.getElementById('modal-asset-tipo'),
+    modalAssetSubtipo: document.getElementById('modal-asset-subtipo'),
+    modalAssetSubtipoVal: document.getElementById('modal-asset-subtipo-val'),
     modalAssetUbicacion: document.getElementById('modal-asset-ubicacion'),
     modalAssetMarcaModelo: document.getElementById('modal-asset-marcamodelo'),
     modalAssetSerie: document.getElementById('modal-asset-serie'),
@@ -205,10 +224,29 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.datalistTipos.innerHTML = tipos.map(t => `<option value="${t}">`).join('');
     dom.datalistUbicaciones.innerHTML = locs.map(l => `<option value="${l}">`).join('');
 
+    updateSubtiposDatalist();
+
     // Actualizar select de filtro por ubicación
     const currentLoc = dom.filterLocation.value;
     dom.filterLocation.innerHTML = `<option value="todos">Todas las ubicaciones</option>` +
       locs.map(l => `<option value="${l}" ${l === currentLoc ? 'selected' : ''}>${l}</option>`).join('');
+  }
+
+  function updateSubtiposDatalist() {
+    if (!dom.datalistSubtipos) return;
+    const currentTipo = (dom.formTipo && dom.formTipo.value ? dom.formTipo.value.trim() : '');
+    let subs = [];
+    if (currentTipo) {
+      subs = Storage.getSubProducts(currentTipo);
+    } else {
+      const catalog = Storage.getProductCatalog ? Storage.getProductCatalog() : {};
+      const allSubs = new Set();
+      Object.values(catalog).forEach(arr => {
+        if (Array.isArray(arr)) arr.forEach(s => allSubs.add(s));
+      });
+      subs = Array.from(allSubs);
+    }
+    dom.datalistSubtipos.innerHTML = subs.map(s => `<option value="${s}">`).join('');
   }
 
   // ==========================================
@@ -532,7 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // ==========================================
-  // VISTA: PRODUCTOS
+  // VISTA: PRODUCTOS Y SUB-PRODUCTOS (CUADROS)
   // ==========================================
   function renderCategoriesGrid() {
     const activos = Storage.getActivos();
@@ -563,6 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
     categoryNames.forEach(name => {
       const items = groups[name] || [];
       const operativos = items.filter(i => (i.estado || '').toLowerCase() === 'operativo').length;
+      const subCount = (Storage.getSubProducts(name) || []).length;
 
       html += `
         <div class="category-card" data-category="${name}">
@@ -570,12 +609,15 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="category-count">${items.length} ${items.length === 1 ? 'activo' : 'activos'}</span>
           </div>
           <h3 class="category-title">${name}</h3>
-          <div class="category-status-indicator">
+          <div style="font-size:11px; color:#4f46e5; font-weight:700; margin-top:3px;">
+            ${subCount > 0 ? `${subCount} ${subCount === 1 ? 'sub-producto' : 'sub-productos'}` : 'Sin sub-productos'}
+          </div>
+          <div class="category-status-indicator" style="margin-top:6px;">
             <span class="status-dot green"></span> ${operativos} operativos
             ${items.length - operativos > 0 ? `<span class="status-dot orange" style="margin-left:8px;"></span> ${items.length - operativos} en revisión` : ''}
           </div>
           <div class="category-card-footer" style="display:flex; justify-content:space-between; align-items:center;">
-            <span>Ver activos →</span>
+            <span>Ver opciones / cuadros →</span>
             <span style="font-size:11px; text-decoration:underline; font-weight:700;" onclick="event.stopPropagation(); window.openEditProductFieldsModal('${name}')">Editar campos</span>
           </div>
         </div>
@@ -593,29 +635,145 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Abre el detalle de un producto específico (ej: "Teclado")
+  // Abre el detalle de un producto mostrando sus SUB-PRODUCTOS (OTROS CUADROS)
   function openProductDetail(categoryName) {
     state.selectedCategory = categoryName;
-    const activos = Storage.getActivos().filter(a => a.tipo === categoryName);
+    state.selectedSubCategory = null;
 
     dom.categoriesGridWrapper.style.display = 'none';
     dom.productDetailView.style.display = 'block';
+    if (dom.subproductsGridWrapper) dom.subproductsGridWrapper.style.display = 'block';
+    if (dom.subproductDetailView) dom.subproductDetailView.style.display = 'none';
 
-    dom.productDetailTitle.textContent = categoryName;
-    dom.productDetailCount.innerHTML = `
-      <span>${activos.length} unidades registradas</span>
-      <button class="btn btn-sm btn-primary" style="margin-left:12px; padding:4px 10px; font-size:11px;" onclick="window.quickAddAssetForCategory('${categoryName}')">
-        Agregar ${categoryName}
-      </button>
+    renderSubproductsGrid(categoryName);
+  }
+
+  // Renderiza los cuadros de sub-productos para un producto
+  function renderSubproductsGrid(categoryName) {
+    if (dom.productDetailTitle) dom.productDetailTitle.textContent = categoryName;
+    const activos = Storage.getActivos().filter(a => (a.tipo || '').toLowerCase() === categoryName.toLowerCase());
+    const subs = Storage.getSubProducts(categoryName);
+
+    // Agrupar activos por sub-producto
+    const subGroups = {};
+    subs.forEach(s => { subGroups[s] = []; });
+    activos.forEach(a => {
+      const s = a.subtipo || (a.modelo && a.modelo !== '-' ? a.modelo : 'General');
+      if (!subGroups[s]) subGroups[s] = [];
+      subGroups[s].push(a);
+    });
+
+    const allSubKeys = Object.keys(subGroups);
+    if (dom.productDetailCount) {
+      dom.productDetailCount.textContent = `${activos.length} activos en ${allSubKeys.length} sub-productos. Toca un cuadro para ver sus activos:`;
+    }
+
+    let html = '';
+
+    // Cuadros de cada sub-producto
+    allSubKeys.forEach(subName => {
+      const items = subGroups[subName] || [];
+      const operativos = items.filter(i => (i.estado || '').toLowerCase() === 'operativo').length;
+
+      html += `
+        <div class="category-card" data-sub="${subName}">
+          <div class="category-card-header">
+            <span class="category-count">${items.length} ${items.length === 1 ? 'unidad' : 'unidades'}</span>
+          </div>
+          <h3 class="category-title" style="color:#1e3a8a;">${subName}</h3>
+          <div class="category-status-indicator" style="margin-top:6px;">
+            <span class="status-dot green"></span> ${operativos} operativos
+            ${items.length - operativos > 0 ? `<span class="status-dot orange" style="margin-left:8px;"></span> ${items.length - operativos} en revisión` : ''}
+          </div>
+          <div class="category-card-footer" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Ver activos →</span>
+            <span style="font-size:11px; color:#ef4444; font-weight:700;" onclick="event.stopPropagation(); window.promptDeleteSubProduct('${categoryName}', '${subName}')">Eliminar</span>
+          </div>
+        </div>
+      `;
+    });
+
+    // Cuadro "Ver Todos los activos"
+    html += `
+      <div class="category-card" data-sub="todos" style="border-color:#cbd5e1; background:#f8fafc;">
+        <div class="category-card-header">
+          <span class="category-count">${activos.length} activos</span>
+        </div>
+        <h3 class="category-title" style="color:#0f172a;">Ver Todos</h3>
+        <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">Ver todos los activos de ${categoryName} sin filtrar</p>
+        <div class="category-card-footer">
+          <span>Ver todos los activos →</span>
+        </div>
+      </div>
     `;
 
-    if (activos.length === 0) {
-      dom.productDetailList.innerHTML = `<div class="empty-state">No se encontraron activos para ${categoryName}.</div>`;
+    // Cuadro "+ Agregar Sub-producto"
+    html += `
+      <div class="category-card card-add-action" id="card-add-subproduct-box">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:6px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <span style="font-weight:700; font-size:14px;">+ Agregar Sub-producto</span>
+        <span style="font-size:11px; color:var(--text-muted); margin-top:2px;">Crea una nueva opción para ${categoryName}</span>
+      </div>
+    `;
+
+    if (dom.subproductsGrid) dom.subproductsGrid.innerHTML = html;
+
+    // Vincular clics en tarjetas de sub-producto
+    if (dom.subproductsGrid) {
+      dom.subproductsGrid.querySelectorAll('.category-card[data-sub]').forEach(card => {
+        card.addEventListener('click', () => {
+          const sub = card.getAttribute('data-sub');
+          openSubproductDetail(categoryName, sub);
+        });
+      });
+    }
+
+    const addBox = document.getElementById('card-add-subproduct-box');
+    if (addBox) {
+      addBox.addEventListener('click', () => {
+        promptAddSubProduct(categoryName);
+      });
+    }
+  }
+
+  // Abre el detalle de activos de un sub-producto
+  function openSubproductDetail(categoryName, subName) {
+    state.selectedSubCategory = subName;
+
+    if (dom.subproductsGridWrapper) dom.subproductsGridWrapper.style.display = 'none';
+    if (dom.subproductDetailView) dom.subproductDetailView.style.display = 'block';
+
+    const isTodos = subName === 'todos';
+    if (dom.subproductDetailTitle) {
+      dom.subproductDetailTitle.textContent = isTodos ? `${categoryName} (Todos)` : `${categoryName} - ${subName}`;
+    }
+
+    let items = Storage.getActivos().filter(a => (a.tipo || '').toLowerCase() === categoryName.toLowerCase());
+    if (!isTodos) {
+      items = items.filter(a => {
+        const s = a.subtipo || (a.modelo && a.modelo !== '-' ? a.modelo : 'General');
+        return s.toLowerCase() === subName.toLowerCase();
+      });
+    }
+
+    if (dom.subproductDetailCount) {
+      dom.subproductDetailCount.textContent = `${items.length} unidades encontradas`;
+    }
+
+    if (items.length === 0) {
+      dom.productDetailList.innerHTML = `
+        <div class="empty-state">
+          <p>No se encontraron activos para este sub-producto.</p>
+          <button class="btn btn-primary" onclick="window.quickAddAssetForSubCategory('${categoryName}', '${isTodos ? '' : subName}')">
+            Registrar Activo Aquí
+          </button>
+        </div>
+      `;
       return;
     }
 
     let html = '';
-    activos.forEach(asset => {
+    items.forEach(asset => {
       const barcodeValue = asset.barcode || asset.id;
       const barcodeSvg = Code128.renderSVG(barcodeValue, { height: 42, width: 1.6, fontSize: 12 });
       const isOperativo = (asset.estado || '').toLowerCase() === 'operativo';
@@ -628,6 +786,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="asset-id-wrap">
               <span class="asset-badge-id">ID: ${asset.id}</span>
               <span class="badge ${badgeClass}">${asset.estado || 'Operativo'}</span>
+              ${asset.subtipo ? `<span class="subproduct-badge">${asset.subtipo}</span>` : ''}
             </div>
             <div class="asset-quick-actions">
               <button class="btn-icon" title="Ver / Imprimir Etiqueta" onclick="window.showLabelModal('${asset.id}')">
@@ -687,13 +846,77 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.productDetailList.innerHTML = html;
   }
 
+  function promptAddSubProduct(categoryName) {
+    const subName = prompt(`Ingresa el nombre del nuevo sub-producto para "${categoryName}":\n(Ej: Inalámbrico, 24 Pulgadas, Táctil, etc.)`);
+    if (subName && subName.trim()) {
+      Storage.addSubProduct(categoryName, subName.trim());
+      renderSubproductsGrid(categoryName);
+      updateDatalists();
+      refreshUI();
+    }
+  }
+  window.promptAddSubProduct = promptAddSubProduct;
+
+  window.promptDeleteSubProduct = (categoryName, subName) => {
+    if (confirm(`¿Eliminar el sub-producto "${subName}" de "${categoryName}"?`)) {
+      Storage.deleteSubProduct(categoryName, subName);
+      renderSubproductsGrid(categoryName);
+      updateDatalists();
+      refreshUI();
+    }
+  };
+
+  window.quickAddAssetForSubCategory = (categoryName, subCategoryName) => {
+    dom.assetForm.reset();
+    state.editingAssetId = null;
+    dom.formTitle.textContent = `Registrar Nuevo: ${categoryName}`;
+    dom.formTipo.value = categoryName;
+    if (dom.formSubtipo) dom.formSubtipo.value = subCategoryName || '';
+    dom.formId.value = Storage.generateNextId();
+    dom.formBarcode.value = dom.formId.value;
+    dom.btnCancelEdit.style.display = 'inline-block';
+    navigateToTab('registro');
+    dom.formUbicacion.focus();
+  };
+
   // Regresar a la vista de cuadrícula de categorías
-  dom.btnBackToCategories.addEventListener('click', () => {
-    state.selectedCategory = null;
-    dom.productDetailView.style.display = 'none';
-    dom.categoriesGridWrapper.style.display = 'block';
-    renderCategoriesGrid();
-  });
+  if (dom.btnBackToCategories) {
+    dom.btnBackToCategories.addEventListener('click', () => {
+      state.selectedCategory = null;
+      state.selectedSubCategory = null;
+      dom.productDetailView.style.display = 'none';
+      dom.categoriesGridWrapper.style.display = 'block';
+      renderCategoriesGrid();
+    });
+  }
+
+  // Regresar a la vista de sub-productos del producto actual
+  if (dom.btnBackToSubproducts) {
+    dom.btnBackToSubproducts.addEventListener('click', () => {
+      if (state.selectedCategory) {
+        openProductDetail(state.selectedCategory);
+      }
+    });
+  }
+
+  // Botón directo para nuevo sub-producto en cabecera
+  if (dom.btnAddSubproductDirect) {
+    dom.btnAddSubproductDirect.addEventListener('click', () => {
+      if (state.selectedCategory) {
+        promptAddSubProduct(state.selectedCategory);
+      }
+    });
+  }
+
+  // Botón directo para agregar activo al sub-producto
+  if (dom.btnQuickAddSubproductAsset) {
+    dom.btnQuickAddSubproductAsset.addEventListener('click', () => {
+      if (state.selectedCategory) {
+        const sub = state.selectedSubCategory === 'todos' ? '' : (state.selectedSubCategory || '');
+        quickAddAssetForSubCategory(state.selectedCategory, sub);
+      }
+    });
+  }
 
   // ==========================================
   // VISTA: TODOS LOS ACTIVOS (LISTA GENERAL)
@@ -772,6 +995,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="asset-card-top">
             <div class="asset-id-wrap">
               <span class="product-type-badge">${asset.tipo}</span>
+              ${asset.subtipo ? `<span class="subproduct-badge">${asset.subtipo}</span>` : ''}
               <span class="asset-badge-id">ID: ${asset.id}</span>
               <span class="badge ${badgeClass}">${asset.estado || 'Operativo'}</span>
             </div>
@@ -809,7 +1033,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <tr>
           <td><span class="table-id-badge">${asset.id}</span></td>
           <td><span class="table-barcode-preview">${barcodeValue}</span></td>
-          <td><strong style="color: #0f172a;">${asset.tipo || '-'}</strong></td>
+          <td>
+            <strong style="color: #0f172a;">${asset.tipo || '-'}</strong>
+            ${asset.subtipo ? `<div style="margin-top: 2px;"><span class="subproduct-badge">${asset.subtipo}</span></div>` : ''}
+          </td>
           <td>
             <div style="font-weight: 600;">${asset.marca || '-'}</div>
             <div style="font-size: 11px; color: var(--text-muted);">${asset.modelo || ''}</div>
@@ -879,6 +1106,7 @@ document.addEventListener('DOMContentLoaded', () => {
       id: id,
       barcode: dom.formBarcode.value.trim() || id,
       tipo: dom.formTipo.value.trim() || 'General',
+      subtipo: dom.formSubtipo ? dom.formSubtipo.value.trim() : '',
       marca: dom.formMarca.value.trim() || '-',
       modelo: dom.formModelo.value.trim() || '-',
       serie: dom.formSerie.value.trim() || '-',
@@ -892,6 +1120,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Limpiar formulario y resetear estado
     dom.assetForm.reset();
+    if (dom.formSubtipo) dom.formSubtipo.value = '';
     state.editingAssetId = null;
     dom.formTitle.textContent = "Registrar Nuevo Activo";
     dom.btnCancelEdit.style.display = 'none';
@@ -910,11 +1139,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // Cancelar edición
   dom.btnCancelEdit.addEventListener('click', () => {
     dom.assetForm.reset();
+    if (dom.formSubtipo) dom.formSubtipo.value = '';
     state.editingAssetId = null;
     dom.formTitle.textContent = "Registrar Nuevo Activo";
     dom.btnCancelEdit.style.display = 'none';
     navigateToTab('paneles');
   });
+
+  // Escuchar cambio en el tipo de producto para sugerir sub-productos
+  if (dom.formTipo) {
+    dom.formTipo.addEventListener('input', () => {
+      updateSubtiposDatalist();
+    });
+    dom.formTipo.addEventListener('change', () => {
+      updateSubtiposDatalist();
+    });
+  }
 
   // Función global para editar activo
   window.editAsset = (id) => {
@@ -926,6 +1166,10 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.formId.value = asset.id;
     dom.formBarcode.value = asset.barcode || asset.id;
     dom.formTipo.value = asset.tipo || '';
+    if (dom.formSubtipo) {
+      dom.formSubtipo.value = asset.subtipo || (asset.modelo && asset.modelo !== '-' ? asset.modelo : '');
+    }
+    updateSubtiposDatalist();
     dom.formMarca.value = asset.marca || '';
     dom.formModelo.value = asset.modelo || '';
     dom.formSerie.value = asset.serie || '';
@@ -1016,7 +1260,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       } else {
         if (state.selectedCategory) {
-          openProductDetail(state.selectedCategory);
+          if (state.selectedSubCategory) {
+            openSubproductDetail(state.selectedCategory, state.selectedSubCategory);
+          } else {
+            openProductDetail(state.selectedCategory);
+          }
         } else {
           dom.locationsGridWrapper.style.display = 'none';
           dom.locationDetailView.style.display = 'none';
@@ -1207,9 +1455,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!asset) return;
 
     const barcodeValue = asset.barcode || asset.id;
+    const sub = asset.subtipo || (asset.modelo && asset.modelo !== '-' ? asset.modelo : '');
 
     dom.modalAssetId.textContent = asset.id;
     dom.modalAssetTipo.textContent = asset.tipo;
+    if (dom.modalAssetSubtipo) {
+      if (sub) {
+        dom.modalAssetSubtipo.textContent = sub;
+        dom.modalAssetSubtipo.style.display = 'inline-block';
+      } else {
+        dom.modalAssetSubtipo.style.display = 'none';
+      }
+    }
+    if (dom.modalAssetSubtipoVal) {
+      dom.modalAssetSubtipoVal.textContent = sub || '-';
+    }
     dom.modalAssetUbicacion.textContent = asset.ubicacion || 'Sin ubicación asignada';
     dom.modalAssetMarcaModelo.textContent = `${asset.marca || '-'} / ${asset.modelo || '-'}`;
     dom.modalAssetSerie.textContent = asset.serie || '-';
@@ -1256,6 +1516,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!asset) return;
 
     const barcodeValue = asset.barcode || asset.id;
+    const sub = asset.subtipo || (asset.modelo && asset.modelo !== '-' ? asset.modelo : '');
     const barcodeSvg = Code128.renderSVG(barcodeValue, { height: 42, width: 1.6, fontSize: 11 });
     const qrSvg = CompactQR.renderSVG(barcodeValue, 85);
 
@@ -1267,7 +1528,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="tag-body">
           <div class="tag-left">
-            <div class="tag-product">${asset.tipo}</div>
+            <div class="tag-product">${asset.tipo} ${sub ? `<span style="font-size:10px; font-weight:normal;">(${sub})</span>` : ''}</div>
             <div class="tag-info">${asset.marca} ${asset.modelo}</div>
             <div class="tag-location">${asset.ubicacion || 'Punto de Venta'}</div>
             <div class="tag-barcode-wrap">${barcodeSvg}</div>
@@ -1651,27 +1912,65 @@ document.addEventListener('DOMContentLoaded', () => {
     let html = '';
     tipos.forEach(tipoName => {
       const count = activos.filter(a => (a.tipo || '').toLowerCase() === tipoName.toLowerCase()).length;
+      const subs = Storage.getSubProducts ? Storage.getSubProducts(tipoName) : [];
+
+      let subsChipsHtml = '';
+      if (subs.length > 0) {
+        subsChipsHtml = `
+          <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:6px;">
+            ${subs.map(s => `
+              <span class="subproduct-chip">
+                ${s}
+                <button type="button" class="subproduct-chip-remove" onclick="event.stopPropagation(); window.deleteSubProductFromModal('${tipoName}', '${s}')" title="Eliminar sub-producto">×</button>
+              </span>
+            `).join('')}
+          </div>
+        `;
+      } else {
+        subsChipsHtml = `<div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Sin sub-productos registrados</div>`;
+      }
+
       html += `
-        <div class="location-manage-item">
-          <div class="location-manage-info">
-            <span class="location-manage-name">${tipoName}</span>
-            <span class="location-manage-count">${count} ${count === 1 ? 'unidad' : 'unidades'}</span>
+        <div class="location-manage-item" style="flex-direction:column; align-items:stretch; gap:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="location-manage-info">
+              <span class="location-manage-name">${tipoName}</span>
+              <span class="location-manage-count">${count} ${count === 1 ? 'unidad' : 'unidades'}</span>
+            </div>
+            <div class="location-manage-actions">
+              <button type="button" class="btn btn-xs btn-outline btn-add-sub-prod" data-type="${tipoName}" style="font-weight:700;">
+                + Sub-producto
+              </button>
+              <button type="button" class="btn btn-xs btn-primary btn-edit-fields-prod" data-type="${tipoName}">
+                Editar Campos
+              </button>
+              <button type="button" class="btn btn-xs btn-outline btn-rename-prod" data-type="${tipoName}">
+                Renombrar
+              </button>
+              <button type="button" class="btn btn-xs btn-danger btn-delete-prod" data-type="${tipoName}">
+                Eliminar
+              </button>
+            </div>
           </div>
-          <div class="location-manage-actions">
-            <button type="button" class="btn btn-xs btn-primary btn-edit-fields-prod" data-type="${tipoName}">
-              Editar Campos
-            </button>
-            <button type="button" class="btn btn-xs btn-outline btn-rename-prod" data-type="${tipoName}">
-              Renombrar
-            </button>
-            <button type="button" class="btn btn-xs btn-danger btn-delete-prod" data-type="${tipoName}">
-              Eliminar
-            </button>
-          </div>
+          ${subsChipsHtml}
         </div>
       `;
     });
     dom.productsManageList.innerHTML = html;
+
+    // Vincular botón + Sub-producto en modal
+    dom.productsManageList.querySelectorAll('.btn-add-sub-prod').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const typeName = btn.getAttribute('data-type');
+        const subName = prompt(`Agregar nuevo sub-producto para "${typeName}":\n(Ej: Inalámbrico, 24 Pulgadas, Táctil, etc.)`);
+        if (subName && subName.trim()) {
+          Storage.addSubProduct(typeName, subName.trim());
+          renderManageProductsList();
+          updateDatalists();
+          refreshUI();
+        }
+      });
+    });
 
     // Vincular botón Editar Campos
     dom.productsManageList.querySelectorAll('.btn-edit-fields-prod').forEach(btn => {
@@ -1719,6 +2018,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  window.deleteSubProductFromModal = (prodName, subName) => {
+    if (confirm(`¿Eliminar el sub-producto "${subName}" de "${prodName}"?`)) {
+      Storage.deleteSubProduct(prodName, subName);
+      renderManageProductsList();
+      updateDatalists();
+      refreshUI();
+    }
+  };
+
   // Vincular eventos del modal de productos
   if (dom.btnOpenManageProducts) {
     dom.btnOpenManageProducts.addEventListener('click', openManageProductsModal);
@@ -1733,11 +2041,14 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.formAddProduct.addEventListener('submit', (e) => {
       e.preventDefault();
       const name = dom.inputNewProductName.value.trim();
+      const subName = dom.inputNewSubproductName ? dom.inputNewSubproductName.value.trim() : '';
       if (!name) return;
-      const added = Storage.addProductType(name);
+      const added = Storage.addProductType(name, subName);
       if (added) {
         dom.inputNewProductName.value = '';
+        if (dom.inputNewSubproductName) dom.inputNewSubproductName.value = '';
         renderManageProductsList();
+        updateDatalists();
         refreshUI();
       } else {
         alert(`El producto "${name}" ya existe.`);
@@ -1748,6 +2059,45 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // PANEL / MODAL PARA EDITAR CAMPOS DEL PRODUCTO
   // ==========================================
+  function renderEditProductSubproducts(productType) {
+    if (!dom.editProductSubproductsList) return;
+    const subs = Storage.getSubProducts ? Storage.getSubProducts(productType) : [];
+    if (subs.length === 0) {
+      dom.editProductSubproductsList.innerHTML = '<span style="font-size:11px; color:var(--text-muted);">Sin sub-productos registrados</span>';
+      return;
+    }
+    let html = '';
+    subs.forEach(s => {
+      html += `
+        <span class="subproduct-chip">
+          ${s}
+          <button type="button" class="subproduct-chip-remove" onclick="window.removeSubProductFromEdit('${productType}', '${s}')">×</button>
+        </span>
+      `;
+    });
+    dom.editProductSubproductsList.innerHTML = html;
+  }
+
+  window.removeSubProductFromEdit = (prodType, subName) => {
+    Storage.deleteSubProduct(prodType, subName);
+    renderEditProductSubproducts(prodType);
+    updateDatalists();
+    refreshUI();
+  };
+
+  if (dom.btnAddSubproductInEdit && dom.inputEditProductNewSubproduct) {
+    dom.btnAddSubproductInEdit.addEventListener('click', () => {
+      const prodType = dom.editProductOriginalType.value;
+      const newSub = dom.inputEditProductNewSubproduct.value.trim();
+      if (!newSub) return;
+      Storage.addSubProduct(prodType, newSub);
+      dom.inputEditProductNewSubproduct.value = '';
+      renderEditProductSubproducts(prodType);
+      updateDatalists();
+      refreshUI();
+    });
+  }
+
   function openEditProductFieldsModal(productType) {
     if (!productType) return;
     const activos = Storage.getActivos().filter(a => (a.tipo || '').toLowerCase() === productType.toLowerCase());
@@ -1771,6 +2121,9 @@ document.addEventListener('DOMContentLoaded', () => {
       locOptions += `<option value="${loc}" ${selected}>${loc}</option>`;
     });
     dom.selectEditProductUbicacion.innerHTML = locOptions;
+
+    // Renderizar sub-productos en el modal de edición
+    renderEditProductSubproducts(productType);
 
     if (dom.modalEditProductFields) dom.modalEditProductFields.style.display = 'flex';
   }
@@ -1851,7 +2204,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       } else {
         if (state.selectedCategory) {
-          openProductDetail(state.selectedCategory);
+          if (state.selectedSubCategory) {
+            openSubproductDetail(state.selectedCategory, state.selectedSubCategory);
+          } else {
+            openProductDetail(state.selectedCategory);
+          }
         } else {
           dom.locationsGridWrapper.style.display = 'none';
           dom.locationDetailView.style.display = 'none';

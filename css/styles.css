@@ -1606,6 +1606,67 @@ textarea.form-control {
   gap: 6px;
 }
 
+/* Insignia de sub-producto */
+.subproduct-badge {
+  background: #ede9fe;
+  color: #5b21b6;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+/* Tarjeta de acción para agregar nuevo sub-producto */
+.category-card.card-add-action {
+  border: 2px dashed #93c5fd;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  min-height: 140px;
+  color: var(--primary);
+  transition: all 0.2s ease;
+}
+
+.category-card.card-add-action:hover {
+  background: #eff6ff;
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+/* Chips de sub-productos en modales */
+.subproduct-chip {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.subproduct-chip-remove {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+}
+
+.subproduct-chip-remove:hover {
+  color: #ef4444;
+}
+
 /* ========================================================
    MEDIA QUERY PARA PC / LAPTOP (PANTALLAS > 768px)
    ======================================================== */
