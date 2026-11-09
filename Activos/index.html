@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f172a">
+  <title>Control de Activos Punto de Venta</title>
+
+  <link rel="manifest" href="manifest.json?v=6">
+  <link rel="stylesheet" href="css/styles.css?v=6">
+</head>
+
+<body>
+
+  <!-- CABECERA PRINCIPAL (Estilo Dashboard Punto de Venta) -->
+  <header class="app-header">
+    <div class="header-top">
+      <div class="brand-wrap">
+        <span class="brand-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+        </span>
+        <div>
+          <h1 class="brand-title">Control de Activos POS</h1>
+          <div style="display:flex; align-items:center; gap:6px; margin-top:2px; flex-wrap:wrap;">
+            <p class="brand-sub">Sistema de Registro</p>
+            <span id="sync-status-badge" class="sync-badge" title="Sincronización en tiempo real con la PC">
+              <span class="sync-dot"></span>
+              <span id="sync-status-text">Tiempo Real</span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button id="btn-connect-phone" class="btn btn-sm btn-outline" style="color:#fff; border-color:rgba(255,255,255,0.4); font-size:12px; display:none;">
+          Conectar Celular
+        </button>
+        <button id="btn-trigger-scan" class="header-scan-btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+          <span>Escanear</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- TARJETAS DE ESTADÍSTICAS (Idénticas al Excel del usuario) -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <span class="stat-label">Total Activos</span>
+        <span id="stat-total" class="stat-value total">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Operativos</span>
+        <span id="stat-operativos" class="stat-value green">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">En Mant.</span>
+        <span id="stat-mantenimiento" class="stat-value orange">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">De Baja</span>
+        <span id="stat-debaja" class="stat-value red">0</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENEDOR PRINCIPAL DE PESTAÑAS -->
+  <main class="main-container">
+
+    <!-- ========================================================
+         PESTAÑA 1: CUADROS DE UBICACIÓN & PANELES DE PRODUCTO
+         ======================================================== -->
+    <section id="tab-paneles" class="tab-content-panel active">
+      
+      <!-- Selector de Modo de Vista (Por Ubicación como Predeterminado) -->
+      <div class="view-mode-selector">
+        <button type="button" id="btn-mode-locations" class="view-mode-pill active">
+          Cuadros de Ubicación
+        </button>
+        <button type="button" id="btn-mode-categories" class="view-mode-pill">
+          Paneles por Producto
+        </button>
+      </div>
+
+      <!-- VISTA 1A: CUADROS POR UBICACIÓN (PREDETERMINADA) -->
+      <div id="locations-grid-wrapper">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Cuadros de Ubicación</h2>
+            <span style="font-size: 12px; color: var(--text-muted);">Selecciona dónde se encuentran los activos (Caja 1, Caja 2...)</span>
+          </div>
+          <button type="button" id="btn-open-manage-locations" class="btn btn-sm btn-outline" style="font-size:12px; font-weight:700;">
+            Editar Cuadros
+          </button>
+        </div>
+        <div id="locations-grid" class="locations-grid">
+          <!-- Renderizado dinámico desde app.js -->
+        </div>
+      </div>
+
+      <!-- VISTA 1B: DETALLE DE UNA UBICACIÓN (ej. Caja 1) -->
+      <div id="location-detail-view" class="location-detail-view" style="display:none;">
+        <div class="detail-top-nav">
+          <button id="btn-back-locations" class="btn-back">
+            &larr; Volver a Ubicaciones
+          </button>
+          <button id="btn-edit-current-location" class="btn btn-sm btn-outline" style="margin-left:auto; font-size:12px;">
+            Renombrar este Cuadro
+          </button>
+        </div>
+        <div class="section-header" style="margin-bottom: 12px;">
+          <div>
+            <h2 id="location-detail-title" class="section-title">Ubicación</h2>
+            <p id="location-detail-count" style="font-size: 12px; color: var(--text-muted); margin-top:2px;">0 activos asignados</p>
+          </div>
+        </div>
+        <!-- Filtro rápido por tipo de producto dentro de esta ubicación -->
+        <div id="location-category-chips" class="location-chips-row"></div>
+        <!-- Lista de activos de esa ubicación con Código de Barras, ID y Ubicación específica -->
+        <div id="location-detail-list" class="assets-grid-container">
+          <!-- Renderizado dinámico desde app.js -->
+        </div>
+      </div>
+
+      <!-- VISTA 2A: PANELES GENERALES POR PRODUCTO (Alternativa) -->
+      <div id="categories-grid-wrapper" style="display:none;">
+        <div class="section-header">
+          <h2 class="section-title">Paneles por Producto</h2>
+          <span style="font-size: 12px; color: var(--text-muted);">Toca un panel para ver detalles</span>
+        </div>
+        <div id="categories-grid" class="categories-grid">
+          <!-- Renderizado dinámico desde app.js -->
+        </div>
+      </div>
+
+      <!-- VISTA 2B: DETALLE DE UN PRODUCTO (ej. Panel de Teclados) -->
+      <div id="product-detail-view" class="product-detail-view" style="display:none;">
+        <div class="detail-top-nav">
+          <button id="btn-back-categories" class="btn-back">
+            &larr; Volver a Categorías
+          </button>
+        </div>
+        <div class="section-header" style="margin-bottom: 12px;">
+          <div>
+            <h2 id="product-detail-title" class="section-title">Panel de Teclados</h2>
+            <p id="product-detail-count" style="font-size: 12px; color: var(--text-muted);">0 unidades</p>
+          </div>
+        </div>
+        <!-- Lista de activos de esa categoría con Código de Barras, ID y Ubicación -->
+        <div id="product-detail-list" class="assets-grid-container">
+          <!-- Renderizado dinámico desde app.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         PESTAÑA 2: TODOS LOS ACTIVOS (Búsqueda y Filtros)
+         ======================================================== -->
+    <section id="tab-todos" class="tab-content-panel">
+      <div class="search-bar-wrap">
+        <span class="search-icon-abs">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </span>
+        <input type="text" id="search-input" class="search-input"
+          placeholder="Buscar por código, serie, marca, ubicación...">
+      </div>
+
+      <div class="filters-row">
+        <select id="filter-status" class="form-control" style="padding: 8px 12px; font-size: 13px;">
+          <option value="todos">Todos los Estados</option>
+          <option value="operativo">Operativos</option>
+          <option value="mantenimiento">En Mantenimiento</option>
+          <option value="debaja">De Baja / Dañados</option>
+        </select>
+
+        <select id="filter-location" class="form-control" style="padding: 8px 12px; font-size: 13px;">
+          <option value="todos">Todas las Ubicaciones</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <span id="assets-count-text"
+          style="font-size: 12px; font-weight: 600; color: var(--text-muted);">Cargando...</span>
+      </div>
+
+      <div id="assets-list" class="assets-grid-container">
+        <!-- Renderizado dinámico -->
+      </div>
+    </section>
+
+    <!-- ========================================================
+         PESTAÑA 3: REGISTRAR / EDITAR ACTIVO (Mobile-first form)
+         ======================================================== -->
+    <section id="tab-registro" class="tab-content-panel">
+      <div class="form-card">
+        <div class="section-header">
+          <h2 id="form-title" class="section-title">Registrar Nuevo Activo</h2>
+          <button id="btn-cancel-edit" class="btn btn-sm btn-outline" style="display: none;">Cancelar</button>
+        </div>
+
+        <form id="asset-form">
+          <!-- ID / Código de Activo -->
+          <div class="form-group">
+            <label class="form-label">ID / Código de Activo *</label>
+            <div class="input-with-action">
+              <input type="text" id="input-id" class="form-control" placeholder="Ej: ACT-012" required>
+              <button type="button" id="btn-auto-id" class="btn btn-outline"
+                style="white-space: nowrap; font-size: 12px;">
+                Auto ID
+              </button>
+            </div>
+          </div>
+
+          <!-- Código de Barras (Escaneable) -->
+          <div class="form-group">
+            <label class="form-label">Código de Barras / QR *</label>
+            <div class="input-with-action">
+              <input type="text" id="input-barcode" class="form-control" placeholder="Escanear o ingresar código">
+              <button type="button" id="btn-scan-barcode-field" class="btn btn-primary" title="Escanear con Cámara">
+                Escanear
+              </button>
+            </div>
+          </div>
+
+          <!-- Tipo de Activo (Producto) -->
+          <div class="form-group">
+            <label class="form-label">Tipo de Activo (Producto) *</label>
+            <input type="text" id="input-tipo" class="form-control" list="datalist-tipos"
+              placeholder="Ej: Teclado, Ticketera, Pantalla..." required>
+            <datalist id="datalist-tipos"></datalist>
+          </div>
+
+          <!-- Marca y Modelo -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Marca</label>
+              <input type="text" id="input-marca" class="form-control" placeholder="Ej: Dell, HP, Samsung...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Modelo</label>
+              <input type="text" id="input-modelo" class="form-control" placeholder="Ej: 3nStar RPT008...">
+            </div>
+          </div>
+
+          <!-- N° de Serie y Estado -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">N° de Serie</label>
+              <input type="text" id="input-serie" class="form-control" placeholder="Ej: SN-98432">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Estado</label>
+              <select id="input-estado" class="form-control">
+                <option value="Operativo">Operativo</option>
+                <option value="En Mantenimiento">En Mantenimiento</option>
+                <option value="De Baja / Dañado">De Baja / Dañado</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Ubicación ("En qué lugar se encuentra") -->
+          <div class="form-group">
+            <label class="form-label" style="color: var(--primary);">Lugar donde se encuentra (Ubicación) *</label>
+            <input type="text" id="input-ubicacion" class="form-control" list="datalist-ubicaciones"
+              placeholder="Ej: Caja 1, Mostrador Principal, Almacén..." required>
+            <datalist id="datalist-ubicaciones"></datalist>
+          </div>
+
+          <!-- Notas -->
+          <div class="form-group">
+            <label class="form-label">Notas u Observaciones</label>
+            <textarea id="input-notas" class="form-control"
+              placeholder="Detalles adicionales, accesorios incluidos, estado físico..."></textarea>
+          </div>
+
+          <!-- Acciones -->
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-block" style="font-size: 16px; padding: 14px; font-weight:700;">
+              Guardar Activo
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         PESTAÑA 4: AJUSTES, EXPORTAR Y RESPALDO
+         ======================================================== -->
+    <section id="tab-ajustes" class="tab-content-panel">
+      <div class="form-card">
+        <h2 class="section-title" style="margin-bottom: 14px;">Ajustes y Copias de Seguridad</h2>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <!-- NUBE SUPABASE (BASE DE DATOS EN TIEMPO REAL) -->
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:14px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+              <h3 style="font-size:14px; font-weight:800; color:#166534;">Conexión Supabase (Nube en Tiempo Real)</h3>
+              <span id="supabase-status-pill" class="badge" style="font-size:10px; background:#dcfce7; color:#15803d;">Verificando...</span>
+            </div>
+            <p style="font-size:12px; color:#15803d; margin-bottom:12px;">
+              Sincroniza tus activos en la nube entre tu celular y tu PC desde cualquier lugar sin necesidad de servidores locales ni Wi-Fi compartido.
+            </p>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div>
+                <label style="font-size:11px; font-weight:700; color:#374151; display:block; margin-bottom:3px;">Project URL de Supabase:</label>
+                <input type="text" id="input-supabase-url" class="form-control" placeholder="https://xxxxxxxxxxxx.supabase.co" style="font-size:12px;">
+              </div>
+              <div>
+                <label style="font-size:11px; font-weight:700; color:#374151; display:block; margin-bottom:3px;">Anon / Public Key de Supabase:</label>
+                <input type="password" id="input-supabase-key" class="form-control" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="font-size:12px;">
+              </div>
+              <div style="display:flex; gap:8px; margin-top:4px;">
+                <button type="button" id="btn-save-supabase" class="btn btn-primary" style="flex:1; padding:8px 12px; font-size:12px;">
+                  Guardar y Conectar
+                </button>
+                <button type="button" id="btn-push-supabase-now" class="btn btn-outline" style="flex:1; padding:8px 12px; font-size:12px;">
+                  Subir Datos a Supabase
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
+            <h3 style="font-size:14px; font-weight:700; margin-bottom:4px;">Exportar a Excel (CSV)</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
+              Descarga todo tu inventario en un archivo compatible con Microsoft Excel y Google Sheets.
+            </p>
+            <button id="btn-export-csv" class="btn btn-outline btn-block">
+              Descargar Excel / CSV
+            </button>
+          </div>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
+            <h3 style="font-size:14px; font-weight:700; margin-bottom:4px;">Impresión Masiva de Etiquetas</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
+              Genera una hoja con todos los códigos de barras y QR para recortar y pegar en los equipos.
+            </p>
+            <button id="btn-print-all-labels" class="btn btn-primary btn-block">
+              Imprimir Todas las Etiquetas
+            </button>
+          </div>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
+            <h3 style="font-size:14px; font-weight:700; margin-bottom:4px;">Copia de Seguridad JSON</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
+              Guarda un respaldo completo de tu base de datos o restaura tus datos en otro celular.
+            </p>
+            <div style="display:flex; gap:8px;">
+              <button id="btn-export-json" class="btn btn-outline" style="flex:1;">
+                Exportar Backup
+              </button>
+              <button id="btn-import-json" class="btn btn-outline" style="flex:1;">
+                Restaurar Backup
+              </button>
+              <input type="file" id="file-import-json" accept=".json" class="hidden">
+            </div>
+          </div>
+
+          <div style="background:#fee2e2; border:1px solid #fecaca; border-radius:10px; padding:14px; margin-top:10px;">
+            <h3 style="font-size:14px; font-weight:700; color:#b91c1c; margin-bottom:4px;">Restablecer Inventario Inicial</h3>
+            <p style="font-size:12px; color:#991b1b; margin-bottom:10px;">
+              Restaura la lista con los 30 activos del inventario original del punto de venta.
+            </p>
+            <button id="btn-reset-data" class="btn btn-outline"
+              style="border-color:#f87171; color:#b91c1c; width:100%;">
+              Restablecer Valores Iniciales
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ========================================================
+       BARRA DE NAVEGACIÓN INFERIOR (MÓVIL / PWA - SIN EMOJIS)
+       ======================================================== -->
+  <nav class="bottom-nav">
+    <button class="nav-tab-btn active" data-tab="paneles">
+      <span class="nav-tab-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+      </span>
+      <span>Ubicaciones</span>
+    </button>
+    <button class="nav-tab-btn" data-tab="todos">
+      <span class="nav-tab-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="2"></rect><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="13" y2="16"></line></svg>
+      </span>
+      <span>Inventario</span>
+    </button>
+    <!-- Botón Central Flotante para Escanear Rápido -->
+    <button id="btn-scan-fab" class="scan-fab-btn" title="Escanear Código de Barras o QR">
+      <span class="scan-fab-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><line x1="7" y1="8" x2="7" y2="16"></line><line x1="10" y1="8" x2="10" y2="16"></line><line x1="14" y1="8" x2="14" y2="16"></line><line x1="17" y1="8" x2="17" y2="16"></line></svg>
+      </span>
+    </button>
+    <button class="nav-tab-btn" data-tab="registro">
+      <span class="nav-tab-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      </span>
+      <span>Registrar</span>
+    </button>
+    <button class="nav-tab-btn" data-tab="ajustes">
+      <span class="nav-tab-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </span>
+      <span>Ajustes</span>
+    </button>
+  </nav>
+
+  <!-- ========================================================
+       MODAL: ESCÁNER DE CÁMARA A PANTALLA COMPLETA
+       ======================================================== -->
+  <div id="scanner-modal" class="modal-overlay">
+    <div class="scanner-container">
+      <div class="scanner-header">
+        <span style="font-weight:700; font-size:15px;">Escaneando Código</span>
+        <button id="btn-close-scanner"
+          style="background:none; border:none; color:#fff; font-size:22px; cursor:pointer;">✕</button>
+      </div>
+
+      <div class="scanner-viewport-box">
+        <video id="scanner-video" autoplay playsinline webkit-playsinline muted></video>
+        <!-- Contenedor para fallback de html5-qrcode -->
+        <div id="scanner-viewport-reader" style="display:none; position:absolute; width:100%; height:100%;"></div>
+        <!-- Visor con láser de escaneo -->
+        <div class="scanner-guide"></div>
+
+        <!-- Tarjeta de Asistencia cuando el navegador del celular bloquea el video en vivo (HTTP en red Wi-Fi) -->
+        <div id="scanner-insecure-notice" class="scanner-insecure-card hidden">
+          <div class="insecure-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+          </div>
+          <h3 class="insecure-title">Cámara en Celular</h3>
+          <p class="insecure-desc">
+            Al conectar por red Wi-Fi (HTTP), tu celular requiere activar la cámara mediante foto directa:
+          </p>
+          <button type="button" id="btn-snap-photo-trigger" class="btn btn-primary btn-block btn-snap-large">
+            Abrir Cámara y Tomar Foto
+          </button>
+          
+          <div class="manual-quick-wrap">
+            <span class="manual-quick-label">O escribe el código/ID:</span>
+            <div class="manual-quick-row">
+              <input type="text" id="manual-quick-code" class="form-control" placeholder="Ej: ACT-001">
+              <button type="button" id="btn-manual-quick-go" class="btn btn-outline" style="background:#fff; color:#000; font-weight:700;">Buscar</button>
+            </div>
+          </div>
+
+          <div class="insecure-tip">
+            <strong>Video continuo en vivo:</strong> Al desplegar la app en la nube (Vercel, Netlify o app instalada con Supabase), HTTPS está activo por defecto y la cámara funciona de inmediato en tiempo real.
+          </div>
+        </div>
+      </div>
+
+      <div id="scanner-error-msg" class="hidden"
+        style="position:absolute; top:70px; left:16px; right:16px; background:rgba(220,38,38,0.9); color:#fff; padding:10px; border-radius:8px; font-size:12px; z-index:30; text-align:center;">
+      </div>
+
+      <div class="scanner-controls">
+        <button id="btn-scanner-torch" class="scanner-btn-round" title="Linterna / Flash" style="display:none;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        </button>
+        <button id="btn-upload-photo" class="scanner-btn-round" title="Tomar foto de código con cámara" style="background:var(--primary); border-color:#fff;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+        </button>
+        <input type="file" id="file-scan-input" accept="image/*" capture="environment" class="hidden">
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL: FICHA DETALLADA DE ACTIVO DETECTADO
+       ======================================================== -->
+  <div id="asset-detail-modal" class="modal-overlay">
+    <div class="modal-content-card">
+      <div class="modal-header-row">
+        <div>
+          <span id="modal-asset-tipo"
+            style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase;"></span>
+          <h2 id="modal-asset-id" style="font-size:20px; font-weight:800; color:#1e293b;">ACT-001</h2>
+        </div>
+        <span id="modal-asset-estado-badge" class="badge badge-green">Operativo</span>
+      </div>
+
+      <!-- Ubicación destacada ("En qué lugar se encuentra") -->
+      <div
+        style="background:#eff6ff; border-left:4px solid var(--primary); padding:12px; border-radius:0 10px 10px 0; margin-bottom:14px;">
+        <span style="display:block; font-size:10px; font-weight:800; color:#1e40af; text-transform:uppercase;">Lugar donde se encuentra:</span>
+        <span id="modal-asset-ubicacion"
+          style="display:block; font-size:16px; font-weight:800; color:#1e3a8a; margin-top:2px;">Caja 1</span>
+      </div>
+
+      <!-- Código de Barras y QR -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; margin-bottom:14px;">
+        <div id="modal-asset-barcode-svg" style="margin-bottom:8px;"></div>
+        <div style="display:flex; justify-content:center; padding:6px 0;">
+          <div id="modal-asset-qr-svg"></div>
+        </div>
+      </div>
+
+      <!-- Datos Técnicos -->
+      <div style="background:#f8fafc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:16px;">
+        <div style="margin-bottom:6px;"><strong>Marca / Modelo:</strong> <span id="modal-asset-marcamodelo">-</span>
+        </div>
+        <div style="margin-bottom:6px;"><strong>N° de Serie:</strong> <span id="modal-asset-serie">-</span></div>
+        <div><strong>Notas:</strong> <span id="modal-asset-notas">-</span></div>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+        <button id="modal-btn-move" class="btn btn-outline" style="font-size:13px;">Mover Ubicación</button>
+        <button id="modal-btn-edit" class="btn btn-outline" style="font-size:13px;">Editar</button>
+      </div>
+      <button id="modal-btn-print" class="btn btn-primary btn-block" style="margin-bottom:8px;">Imprimir Etiqueta</button>
+      <button id="modal-btn-close" class="btn btn-outline btn-block">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL: IMPRESIÓN DE ETIQUETA ADHESIVA CON BARRAS Y QR
+       ======================================================== -->
+  <div id="label-modal" class="modal-overlay">
+    <div class="modal-content-card">
+      <div class="modal-header-row">
+        <h3 style="font-size:16px; font-weight:700;">Etiqueta de Activo</h3>
+        <button id="btn-close-label-modal"
+          style="background:none; border:none; font-size:20px; cursor:pointer;">✕</button>
+      </div>
+
+      <div id="label-preview-container" style="padding:10px 0; max-height:60vh; overflow-y:auto;">
+        <!-- Se inyecta la etiqueta lista para imprimir -->
+      </div>
+
+      <div class="modal-actions-print" style="margin-top:14px; display:flex; gap:8px;">
+        <button id="btn-print-labels" class="btn btn-primary" style="flex:1;">
+          Imprimir Etiqueta
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL: CONECTAR CELULAR CON CÓDIGO QR
+       ======================================================== -->
+  <div id="connect-phone-modal" class="modal-overlay">
+    <div class="modal-content-card" style="text-align:center;">
+      <div class="modal-header-row">
+        <h3 style="font-size:16px; font-weight:700;">Conectar tu Celular</h3>
+        <button id="btn-close-connect-modal" style="background:none; border:none; font-size:22px; cursor:pointer;">✕</button>
+      </div>
+      
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+        Apunta la cámara de tu celular a este código QR para abrir la app directamente:
+      </p>
+
+      <div id="connect-qr-container" style="display:flex; justify-content:center; margin:14px 0;"></div>
+
+      <div style="background:#f1f5f9; padding:10px; border-radius:10px; margin-bottom:14px;">
+        <span style="font-size:11px; font-weight:700; color:#475569; display:block;">O escribe en el navegador de tu celular:</span>
+        <code id="connect-url-text" style="font-size:15px; font-weight:800; color:var(--primary); font-family:monospace;">http://...</code>
+      </div>
+
+      <div style="background:#eff6ff; border-left:4px solid var(--primary); padding:10px; border-radius:0 8px 8px 0; text-align:left; font-size:12px; color:#1e3a8a;">
+        <strong>Pasos en tu celular:</strong><br>
+        1. Al abrir la dirección en Chrome móvil, puedes escanear códigos de inmediato.<br>
+        2. Toca <strong>"Permitir cámara"</strong> y el video en vivo funcionará al 100%.
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL: GESTIÓN Y EDICIÓN DE CUADROS DE UBICACIÓN
+       ======================================================== -->
+  <div id="modal-manage-locations" class="modal-overlay" style="display:none;">
+    <div class="modal-content-card" style="max-width:480px;">
+      <div class="modal-header-row">
+        <h3 style="font-size:16px; font-weight:700;">Gestión de Cuadros de Ubicación</h3>
+        <button id="btn-close-manage-locations" style="background:none; border:none; font-size:22px; cursor:pointer;">✕</button>
+      </div>
+      
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">
+        Crea nuevos cuadros de ubicación, o renombra y elimina los existentes. Cualquier cambio actualiza automáticamente los activos asignados en tiempo real.
+      </p>
+
+      <!-- Formulario para agregar nueva ubicación -->
+      <form id="form-add-location" style="margin-bottom:16px;">
+        <label class="form-label" style="font-size:11px; font-weight:700;">Crear Nuevo Cuadro de Ubicación:</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="input-new-location-name" class="form-control" placeholder="Ej: Caja 4, Barra, Depósito 2" required style="flex:1;">
+          <button type="submit" class="btn btn-primary" style="white-space:nowrap; padding:8px 14px; font-size:13px; font-weight:700;">
+            Crear
+          </button>
+        </div>
+      </form>
+
+      <!-- Lista de ubicaciones existentes -->
+      <div style="border-top:1px solid var(--border-color); padding-top:12px;">
+        <h4 style="font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
+          Cuadros Registrados
+        </h4>
+        <div id="locations-manage-list" style="display:flex; flex-direction:column; gap:8px; max-height:45vh; overflow-y:auto; padding-right:4px;">
+          <!-- Renderizado dinámico desde app.js -->
+        </div>
+      </div>
+
+      <div style="margin-top:16px; padding-top:10px; border-top:1px solid var(--border-color);">
+        <button type="button" id="btn-done-manage-locations" class="btn btn-outline btn-block">
+          Listo / Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts de la aplicación (100% autocontenido y tiempo real) -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/code128.js?v=7"></script>
+  <script src="js/supabase-config.js?v=7"></script>
+  <script src="js/supabase-client.js?v=7"></script>
+  <script src="js/storage.js?v=7"></script>
+  <script src="js/scanner.js?v=7"></script>
+  <script src="js/app.js?v=7"></script>
+
+  <!-- Registro de Service Worker para PWA -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => { });
+      });
+    }
+  </script>
+</body>
+
+</html>
